@@ -3,9 +3,8 @@
 
 #include "mqtt/async_client.h"
 #include "mqtt_client_connection_callback.h"
-#include "mqtt_delivery_action_listener.h"
 
-namespace traffic_warden {
+namespace tw {
 
 class MqttClient {
  public:
@@ -50,9 +49,9 @@ class MqttClient {
 
   void connect();
   void disconnect();
-  void subscribe();
-  void unsubscribe();
-  void publish();
+  void unsubscribe(const std::string& p_topic);
+  void publish(const std::string& p_topic, const std::string& p_payload,
+               const int p_qos, const bool p_retained);
   void ping();
 
  private:
@@ -60,11 +59,9 @@ class MqttClient {
 
   mqtt::connect_options m_connectionOptions;
 
-  traffic_warden::MqttClientConnectionCallback m_connectionCallback;
-
-  traffic_warden::MqttDeliveryActionListener m_deliveryActionListener;
+  tw::MqttClientConnectionCallback m_connectionCallback;
 };
 
-}  // namespace traffic_warden
+}  // namespace tw
 
 #endif  // MQTT_CLIENT_H

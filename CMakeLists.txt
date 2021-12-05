@@ -164,8 +164,7 @@ endif(LINUX)
 set(PROJECT_INCLUDE_FILES
     ${PROJECT_INCLUDE_DIR}/mqtt_client.h
     ${PROJECT_INCLUDE_DIR}/mqtt_client_connection_callback.h
-    ${PROJECT_INCLUDE_DIR}/mqtt_action_listener.h
-    ${PROJECT_INCLUDE_DIR}/mqtt_delivery_action_listener.h
+    ${PROJECT_INCLUDE_DIR}/mqtt_subscribe_action_listener.h
 )
 
 

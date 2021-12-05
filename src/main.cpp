@@ -8,6 +8,8 @@
 
 #include "mqtt_client.h"
 #include "nlohmann/json-schema.hpp"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
 // versioning
@@ -19,13 +21,11 @@ std::atomic_bool globalCntrlExit = {false};
 
 void stopHandler(int sig) {
   if (!globalCntrlExit.load()) {
-    // write only the first exit request. Future ctrl+c will be ignored
-    // utilities::log_info(constants::info::sys_id, "Exit request received:
-    // program stopping");
+    spdlog::info("Exit request received: program stopping");
   }
-  // set global flag, threads will (gently) terminate
+  // set global flag, threads will gently terminate
   globalCntrlExit = true;
-  // listening for future SIGINT signals (for angry users!)
+  // listening for future SIGINT signal
   signal(SIGINT, stopHandler);
 }
 
@@ -84,11 +84,35 @@ static void loader(const nlohmann::json_uri& uri, nlohmann::json& schema) {
   }
 }
 
+void initLogger(const std::string& p_logLevel) {
+  auto l_consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  auto l_rotatingSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+      "logs/traffic_warden.log", 1024 * 1024, 5, false);
+
+  spdlog::sinks_init_list sink_list = {l_rotatingSink, l_consoleSink};
+
+  std::shared_ptr<spdlog::logger> l_logger = std::make_shared<spdlog::logger>(
+      "", std::begin(sink_list), std::end(sink_list));
+  // l_logger->set_pattern("[%Y-%m-%d %T.%e] [%^%-4!l%$] [%6!t] %v");
+  auto l_logLevel = spdlog::level::from_str(p_logLevel);
+  if (l_logLevel == spdlog::level::off) {
+    spdlog::warn("TrafficWarden log disabled!");
+  }
+  l_logger->set_level(l_logLevel);
+
+  spdlog::set_default_logger(l_logger);
+}
+
 int main() {
   printVersion();
-
-  traffic_warden::MqttClient myClient("10.0.2.15", "", "guest", "guest", true,
-                                      true);
+  initLogger("trace");
+  spdlog::trace("trace");
+  spdlog::debug("debug");
+  spdlog::info("info");
+  spdlog::warn("warn");
+  spdlog::error("error");
+  spdlog::critical("critical");
+  tw::MqttClient myClient("10.0.2.15", "", "guest", "guest", true, true);
 
   myClient.connect();
 
@@ -98,6 +122,9 @@ int main() {
     ;
 
   myClient.disconnect();
+
+  while (std::tolower(std::cin.get()) != 'q')
+    ;
 
   return 0;
 }

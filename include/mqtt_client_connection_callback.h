@@ -2,9 +2,10 @@
 #define MQTT_CLIENT_CALLBACK_H
 
 #include "mqtt/async_client.h"
-#include "mqtt_action_listener.h"
+#include "mqtt_subscribe_action_listener.h"
+#include "spdlog/spdlog.h"
 
-namespace traffic_warden {
+namespace tw {
 
 class MqttClientConnectionCallback : public virtual mqtt::callback,
                                      public virtual mqtt::iaction_listener {
@@ -26,14 +27,13 @@ class MqttClientConnectionCallback : public virtual mqtt::callback,
     try {
       m_asyncClient.connect(m_connectionOptions, nullptr, *this);
     } catch (const mqtt::exception& exc) {
-      std::cerr << "Error: " << exc.what() << std::endl;
-      exit(1);
+      spdlog::error("Error: {}", exc.what());
     }
   }
 
   // Re-connection failure
   void on_failure(const mqtt::token& tok) override {
-    std::cout << "Connection attempt failed" << std::endl;
+    spdlog::error("Connection attempt failed");
     // if (++nretry_ > N_RETRY_ATTEMPTS) exit(1);
     reconnect();
   }
@@ -44,43 +44,43 @@ class MqttClientConnectionCallback : public virtual mqtt::callback,
 
   // (Re)connection success
   void connected(const std::string& cause) override {
-    std::cout << "\nConnection success" << std::endl;
+    spdlog::info("Connection success");
     // std::cout << "\nSubscribing to topic '" << TOPIC << "'\n"
     //         << "\tfor client " << CLIENT_ID
     //         << " using QoS" << QOS << "\n"
     //         << "\nPress Q<Enter> to quit\n" << std::endl;
 
-    m_asyncClient.subscribe("TOPIC", 2, nullptr, m_actionListener);
+    m_asyncClient.subscribe("TOPIC", 2, nullptr, m_subscribeActionListener);
   }
 
   // Callback for when the connection is lost.
   // This will initiate the attempt to manually reconnect.
   void connection_lost(const std::string& cause) override {
-    std::cout << "\nConnection lost" << std::endl;
-    if (!cause.empty()) std::cout << "\tcause: " << cause << std::endl;
+    spdlog::error("Connection lost");
+    if (!cause.empty()) spdlog::error("cause: {}", cause);
 
-    std::cout << "Reconnecting..." << std::endl;
+    spdlog::info("Reconnecting...");
     // nretry_ = 0;
     reconnect();
   }
 
   // Callback for when a message arrives.
   void message_arrived(mqtt::const_message_ptr msg) override {
-    std::cout << "Message arrived" << std::endl;
-    std::cout << "\ttopic: '" << msg->get_topic() << "'" << std::endl;
-    std::cout << "\tpayload: '" << msg->to_string() << "'\n" << std::endl;
+    spdlog::trace("Message arrived");
+    spdlog::trace("\ttopic: '{}'", msg->get_topic());
+    spdlog::trace("\tpayload: '{}", msg->to_string());
   }
 
   void delivery_complete(mqtt::delivery_token_ptr token) override {
-    std::cout << "\tDelivery complete for token: "
-              << (token ? token->get_message_id() : -1) << std::endl;
+    spdlog::trace("\tDelivery complete for token: {}",
+                  token ? token->get_message_id() : -1);
   }
 
-  traffic_warden::MqttActionListener m_actionListener;
+  tw::MqttSubscribeActionListener m_subscribeActionListener;
   mqtt::async_client& m_asyncClient;
   mqtt::connect_options& m_connectionOptions;
 };
 
-}  // namespace traffic_warden
+}  // namespace tw
 
 #endif  // MQTT_CLIENT_CALLBACK_H

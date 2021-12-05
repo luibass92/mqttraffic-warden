@@ -1,40 +1,47 @@
 #include "mqtt_client.h"
 
-namespace traffic_warden {
+#include "spdlog/spdlog.h"
+
+namespace tw {
 
 void MqttClient::connect() {
   try {
-    std::cout << "Connecting to the MQTT server..." << std::flush;
+    spdlog::info("Connecting to the MQTT server...");
     m_asyncClient.connect(m_connectionOptions, nullptr, m_connectionCallback);
   } catch (const mqtt::exception& exc) {
-    std::cerr << "\nERROR: Unable to connect to MQTT server: " << exc
-              << std::endl;
-    // return 1;
+    spdlog::error("ERROR: Unable to connect to MQTT server: {}", exc.what());
   }
 }
 
 void MqttClient::disconnect() {
   if (m_asyncClient.is_connected()) {
     try {
-      std::cout << "\nDisconnecting from the MQTT server..." << std::flush;
+      spdlog::info("Disconnecting from the MQTT server...");
       m_asyncClient.disconnect()->wait();
-      std::cout << "OK" << std::endl;
+      spdlog::info("Disconnected successfully");
     } catch (const mqtt::exception& exc) {
-      std::cerr << exc << std::endl;
-      // return 1;
+      spdlog::error("{}", exc.what());
     }
   }
 }
 
-// void subscribe();
+void MqttClient::unsubscribe(const std::string& p_topic) {
+  if (m_asyncClient.is_connected()) {
+    try {
+      m_asyncClient.unsubscribe(p_topic);
+    } catch (const mqtt::exception& exc) {
+      spdlog::error("{}", exc.what());
+    }
+  }
+}
 
-// void unsubscribe();
-
-void MqttClient::publish() {
-  m_asyncClient.publish(mqtt::make_message("myTopic", "myPayload", 3, true),
-                        nullptr, m_deliveryActionListener);
+void MqttClient::publish(const std::string& p_topic,
+                         const std::string& p_payload, const int p_qos,
+                         const bool p_retained) {
+  m_asyncClient.publish(
+      mqtt::make_message(p_topic, p_payload, p_qos, p_retained));
 }
 
 // void ping();
 
-}  // namespace traffic_warden
+}  // namespace tw
