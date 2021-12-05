@@ -1,0 +1,60 @@
+{
+	"brokerAddress": "10.0.2.2",
+	"brokerUser": "guest",
+	"brokerPassword": "guest",
+	"clientId": "",
+	"keepAliveInterval": 60,
+	"ssl": true,
+	"trustStore": "",
+	"keyStore": "",
+	"privateKey": "",
+	"routes": [{
+			"name": "21st Street",
+			"inputTopic": "/foo1/bar1",
+			"outputTopic": "/bar1/foo1",
+			"topicToPayload": [{
+				"from": 1,
+				"to": "producer",
+				"as": "number"
+			}],
+			"payloadToPayload": [{
+				"from": "temp",
+				"to": "input_temp",
+				"as": "number",
+				"keep": true
+			}],
+			"payloadToTopic": [{
+				"from": "temp",
+				"to": 1,
+				"keep": true
+			}],
+			"topicToTopic": [{
+				"from": 1,
+				"to": 2
+			}]
+		},
+		{
+			"name": "New Avenue",
+			"inputTopic": "/foo2/bar2",
+			"outputTopic": "/bar2/foo2",
+			"topicToPayload": [{
+				"from": 2,
+				"to": "producer_subset",
+				"as": "string"
+			}],
+			"payloadToPayload": [{
+				"from": "voltage",
+				"to": "input_voltage",
+				"as": "number"
+			}],
+			"payloadToTopic": [{
+				"from": "voltage",
+				"to": "voltage1"
+			}],
+			"topicToTopic": [{
+				"from": 1,
+				"to": 2
+			}]
+		}
+	]
+}

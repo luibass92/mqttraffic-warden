@@ -10,16 +10,15 @@ class MqttClient {
  public:
   MqttClient(const std::string& p_address, const std::string& p_clientId,
              const std::string& p_user, const std::string& p_password,
-             const bool p_cleanSession, const bool p_reconnect,
-             const std::string& p_caCertificate,
+             const int p_keepAliveInterval, const std::string& p_caCertificate,
              const std::string& p_clientCertificate,
              const std::string& p_clientKey)
       : m_asyncClient(p_address, p_clientId),
         m_connectionOptions(mqtt::connect_options_builder()
                                 .user_name(p_user)
                                 .password(p_password)
-                                .automatic_reconnect(p_reconnect)
-                                .clean_session(p_cleanSession)
+                                .keep_alive_interval(std::chrono::duration<int>(
+                                    p_keepAliveInterval))
                                 .ssl(mqtt::ssl_options_builder()
                                          .trust_store(p_caCertificate)
                                          .key_store(p_clientCertificate)
@@ -32,13 +31,13 @@ class MqttClient {
 
   MqttClient(const std::string& p_address, const std::string& p_clientId,
              const std::string& p_user, const std::string& p_password,
-             const bool p_cleanSession, const bool p_reconnect)
+             const int p_keepAliveInterval)
       : m_asyncClient(p_address, p_clientId),
         m_connectionOptions(mqtt::connect_options_builder()
                                 .user_name(p_user)
                                 .password(p_password)
-                                .automatic_reconnect(p_reconnect)
-                                .clean_session(p_cleanSession)
+                                .keep_alive_interval(std::chrono::duration<int>(
+                                    p_keepAliveInterval))
                                 .finalize()),
         m_connectionCallback(m_asyncClient, m_connectionOptions) {
     m_asyncClient.set_callback(m_connectionCallback);

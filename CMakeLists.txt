@@ -165,12 +165,15 @@ set(PROJECT_INCLUDE_FILES
     ${PROJECT_INCLUDE_DIR}/mqtt_client.h
     ${PROJECT_INCLUDE_DIR}/mqtt_client_connection_callback.h
     ${PROJECT_INCLUDE_DIR}/mqtt_subscribe_action_listener.h
+    ${PROJECT_INCLUDE_DIR}/traffic_warden.h
+
 )
 
 
 set(PROJECT_SOURCE_FILES
     ${PROJECT_SRC_DIR}/main.cpp
     ${PROJECT_SRC_DIR}/mqtt_client.cpp
+    ${PROJECT_SRC_DIR}/traffic_warden.cpp
 )
 
 
@@ -249,7 +252,7 @@ else()
     message(FATAL_ERROR, "Platform unhandled")
 endif()
 
-#find_file(CONFIG_JSON config.json HINTS ${PROJECT_BASEDIR})
+find_file(CONFIG_JSON config.json HINTS ${PROJECT_BASEDIR})
 #find_file(RABBITMQ_CLIENT_CERT rabbitmq_client_certificate.pem HINTS ${PROJECT_BASEDIR}/rabbitmq_certificates)
 #find_file(RABBITMQ_CA_CERT rabbitmq_ca_certificate.pem HINTS ${PROJECT_BASEDIR}/rabbitmq_certificates)
 #find_file(RABBITMQ_CLIENT_KEY rabbitmq_client_key.pem HINTS ${PROJECT_BASEDIR}/rabbitmq_certificates)
@@ -284,7 +287,7 @@ if(WIN32)
                        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TBB_LIB} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
                        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TBB_LIB_MALLOC} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
                        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${TBB_LIB_MALLOC_PROXY} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
-                       #COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CONFIG_JSON} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
+                       COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CONFIG_JSON} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
                        #COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RABBITMQ_CA_CERT} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
                        #COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RABBITMQ_CLIENT_CERT} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
                        #COMMAND ${CMAKE_COMMAND} -E copy_if_different ${RABBITMQ_CLIENT_KEY} ${CMAKE_CURRENT_BINARY_DIR}${BUILD_FOLDER}
@@ -306,7 +309,7 @@ if(LINUX)
     SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
     add_custom_command(TARGET ${PROJECT_BASENAME} POST_BUILD
-                        #COMMAND ${CMAKE_COMMAND} -E copy ${CONFIG_JSON} ${CMAKE_CURRENT_BINARY_DIR}
+                        COMMAND ${CMAKE_COMMAND} -E copy ${CONFIG_JSON} ${CMAKE_CURRENT_BINARY_DIR}
                         #COMMAND ${CMAKE_COMMAND} -E copy ${RABBITMQ_CA_CERT} ${CMAKE_CURRENT_BINARY_DIR}
                         #COMMAND ${CMAKE_COMMAND} -E copy ${RABBITMQ_CLIENT_CERT} ${CMAKE_CURRENT_BINARY_DIR}
                         #COMMAND ${CMAKE_COMMAND} -E copy ${RABBITMQ_CLIENT_KEY} ${CMAKE_CURRENT_BINARY_DIR}
@@ -318,7 +321,7 @@ if(LINUX)
         add_custom_command(TARGET ${PROJECT_BASENAME} POST_BUILD
                            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FOLDER_NAME}"
                            COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_BASENAME}${CMAKE_EXECUTABLE_SUFFIX}" "${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FOLDER_NAME}"
-                           #COMMAND ${CMAKE_COMMAND} -E copy ${CONFIG_JSON} ${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FOLDER_NAME}
+                           COMMAND ${CMAKE_COMMAND} -E copy ${CONFIG_JSON} ${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FOLDER_NAME}
                            #COMMAND ${CMAKE_COMMAND} -E copy ${RABBITMQ_CA_CERT} ${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FOLDER_NAME}
                            #COMMAND ${CMAKE_COMMAND} -E copy ${RABBITMQ_CLIENT_CERT} ${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FOLDER_NAME}
                            #COMMAND ${CMAKE_COMMAND} -E copy ${RABBITMQ_CLIENT_KEY} ${CMAKE_CURRENT_BINARY_DIR}/${OUTPUT_FOLDER_NAME}

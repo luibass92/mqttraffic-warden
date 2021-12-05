@@ -11,6 +11,7 @@
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
+#include "traffic_warden.h"
 
 // versioning
 #include "version.h"
@@ -112,19 +113,9 @@ int main() {
   spdlog::warn("warn");
   spdlog::error("error");
   spdlog::critical("critical");
-  tw::MqttClient myClient("10.0.2.15", "", "guest", "guest", true, true);
 
-  myClient.connect();
-
-  // Just block till user tells us to quit.
-
-  while (std::tolower(std::cin.get()) != 'q')
-    ;
-
-  myClient.disconnect();
-
-  while (std::tolower(std::cin.get()) != 'q')
-    ;
+  tw::TrafficWarden l_trafficWarden(
+      nlohmann::json::parse(std::ifstream("config.json")));
 
   return 0;
 }
