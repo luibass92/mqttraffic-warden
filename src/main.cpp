@@ -114,8 +114,13 @@ int main() {
   spdlog::error("error");
   spdlog::critical("critical");
 
-  tw::TrafficWarden l_trafficWarden(
-      nlohmann::json::parse(std::ifstream("config.json")));
+  // tw::TrafficWarden l_trafficWarden(
+  //     nlohmann::json::parse(std::ifstream("config.json")));
+  tw::TrafficWarden l_trafficWarden;
+  auto l_config = std::ifstream("config.json");
+  l_trafficWarden.init(nlohmann::json::parse(l_config));
 
+  while (std::tolower(std::cin.get()) != 'q')
+    ;
   return 0;
 }

@@ -4,6 +4,10 @@
 
 namespace tw {
 
+void MqttClient::initCallback() {
+  m_asyncClient.set_callback(m_connectionCallback);
+}
+
 void MqttClient::connect() {
   try {
     spdlog::info("Connecting to the MQTT server...");
@@ -41,7 +45,5 @@ void MqttClient::publish(const std::string& p_topic,
   m_asyncClient.publish(
       mqtt::make_message(p_topic, p_payload, p_qos, p_retained));
 }
-
-// void ping();
 
 }  // namespace tw
