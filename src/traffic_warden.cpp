@@ -29,17 +29,25 @@ void TrafficWarden::init(const nlohmann::json& p_configurations) {
         l_keepAliveInterval.has_value() ? l_keepAliveInterval.value() : 60);
   }
 
-  RouteConfigurations_t l_routes =
-      retrieve_routes(p_configurations.at("routes"));
+  m_routes = retrieve_routes(p_configurations.at("routes"));
 
-  m_mqttClient->initCallback();
+  std::list<std::string> l_inputTopics;
+  for (auto it_route : m_routes) {
+    l_inputTopics.push_back(std::get<0>(it_route.second));
+    m_topicToRoute.insert({std::get<0>(it_route.second), it_route.first});
+  }
+  std::thread t1(&TrafficWarden::transform, this);
+  std::thread t2(&TrafficWarden::publish, this);
+
+  m_mqttClient->initCallback(l_inputTopics, &m_streamTransformerQueue);
   m_mqttClient->connect();
+
+  if (t1.joinable()) t1.join();
+  if (t2.joinable()) t2.join();
 }
 
 BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
     const nlohmann::json& p_configurations) {
-  BrokerConfigurations_t l_result;
-
   // mandatory fields
   std::string l_brokerAddress = "";
   if (p_configurations.contains("brokerAddress"))
@@ -126,6 +134,54 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
   }
 
   return l_result;
+}
+
+void TrafficWarden::transform() {
+  while (true) {
+    while (!m_streamTransformerQueue.empty()) {
+      std::pair<std::string, nlohmann::json> l_message;
+      if (m_streamTransformerQueue.try_pop(l_message)) {
+        std::cout
+            << fmt::format(
+                   "Transform message dequeued --> topic: {} | payload: {}",
+                   l_message.first, l_message.second.dump())
+            << std::endl;
+        if (m_topicToRoute.find(l_message.first) != m_topicToRoute.end()) {
+          std::string l_route = m_topicToRoute.at(l_message.first);
+          auto [l_inputTopic, l_outputTopic, l_streamTransformers] =
+              m_routes.at(l_route);
+          for (auto l_streamTransformer : l_streamTransformers) {
+            nlohmann::json l_outputPayload;
+            l_streamTransformer->execute(l_inputTopic, l_message.second,
+                                         l_outputTopic, l_outputPayload);
+            std::cout << l_outputPayload << std::endl;
+            m_publisherQueue.push(
+                std::make_pair(l_outputTopic, l_outputPayload));
+          }
+        }
+      }
+    }
+    spdlog::trace("Transform thread sleeping for 1 sec");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
+}
+
+void TrafficWarden::publish() {
+  while (true) {
+    while (!m_publisherQueue.empty()) {
+      std::pair<std::string, nlohmann::json> l_message;
+      if (m_publisherQueue.try_pop(l_message)) {
+        std::cout << fmt::format(
+                         "Publish message dequeued --> topic: {} | payload: {}",
+                         l_message.first, l_message.second.dump())
+                  << std::endl;
+        m_mqttClient->publish(l_message.first, l_message.second.dump(), 2,
+                              false);
+      }
+    }
+    spdlog::trace("Publish thread sleeping for 1 sec");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+  }
 }
 
 }  // namespace tw

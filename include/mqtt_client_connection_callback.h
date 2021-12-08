@@ -3,7 +3,9 @@
 
 #include "mqtt/async_client.h"
 #include "mqtt_subscribe_action_listener.h"
+#include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
+#include "tbb/concurrent_queue.h"
 
 namespace tw {
 
@@ -14,6 +16,16 @@ class MqttClientConnectionCallback : public virtual mqtt::callback,
                                mqtt::connect_options& p_connectionOptions)
       : m_asyncClient(p_asyncClient),
         m_connectionOptions(p_connectionOptions) {}
+
+  void setTopicToSubscribe(const std::list<std::string>& p_topics) {
+    m_topicsToSubscribe = p_topics;
+  }
+
+  void setMessageQueue(
+      tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>*
+          p_messageQueue) {
+    m_messageQueue = p_messageQueue;
+  }
 
  private:
   // This deomonstrates manually reconnecting to the broker by calling
@@ -50,7 +62,8 @@ class MqttClientConnectionCallback : public virtual mqtt::callback,
     //         << " using QoS" << QOS << "\n"
     //         << "\nPress Q<Enter> to quit\n" << std::endl;
 
-    m_asyncClient.subscribe("TOPIC", 2, nullptr, m_subscribeActionListener);
+    for (auto it_topic : m_topicsToSubscribe)
+      m_asyncClient.subscribe(it_topic, 2, nullptr, m_subscribeActionListener);
   }
 
   // Callback for when the connection is lost.
@@ -66,19 +79,24 @@ class MqttClientConnectionCallback : public virtual mqtt::callback,
 
   // Callback for when a message arrives.
   void message_arrived(mqtt::const_message_ptr msg) override {
-    spdlog::trace("Message arrived");
-    spdlog::trace("\ttopic: '{}'", msg->get_topic());
-    spdlog::trace("\tpayload: '{}", msg->to_string());
+    spdlog::trace("Message arrived\n\ttopic: '{}'\n\tpayload: '{}'",
+                  msg->get_topic(), msg->to_string());
+    m_messageQueue->push(std::make_pair(
+        msg->get_topic(), nlohmann::json::parse(msg->to_string())));
   }
 
   void delivery_complete(mqtt::delivery_token_ptr token) override {
-    spdlog::trace("\tDelivery complete for token: {}",
-                  token ? token->get_message_id() : -1);
+    spdlog::trace(
+        "Delivery complete for token: '{}'\n\ttopic: {}\n\tpayload: '{}'",
+        token ? token->get_message_id() : -1, token->get_message()->get_topic(),
+        token->get_message()->to_string());
   }
 
   tw::MqttSubscribeActionListener m_subscribeActionListener;
   mqtt::async_client& m_asyncClient;
   mqtt::connect_options& m_connectionOptions;
+  std::list<std::string> m_topicsToSubscribe;
+  tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>* m_messageQueue;
 };
 
 }  // namespace tw

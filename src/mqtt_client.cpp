@@ -4,7 +4,12 @@
 
 namespace tw {
 
-void MqttClient::initCallback() {
+void MqttClient::initCallback(
+    const std::list<std::string>& p_topics,
+    tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>*
+        p_messageQueue) {
+  m_connectionCallback.setTopicToSubscribe(p_topics);
+  m_connectionCallback.setMessageQueue(p_messageQueue);
   m_asyncClient.set_callback(m_connectionCallback);
 }
 

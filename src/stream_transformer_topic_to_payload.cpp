@@ -1,5 +1,9 @@
 #include "stream_transformer_topic_to_payload.h"
 
+#include <iostream>
+
+#include "utilities.h"
+
 namespace tw {
 
 void StreamTransformerTopicToPayload::setup(const nlohmann::json& p_json) {
@@ -24,16 +28,17 @@ void StreamTransformerTopicToPayload::setup(const nlohmann::json& p_json) {
 }
 
 void StreamTransformerTopicToPayload::execute(
-    const std::vector<std::string>& p_inputTopic,
-    const nlohmann::json& p_inputPayload, std::string&,
-    nlohmann::json& p_outputPayload) {
+    const std::string& p_inputTopic, const nlohmann::json& p_inputPayload,
+    std::string&, nlohmann::json& p_outputPayload) {
+  std::vector<std::string> l_inputTopicSplitted =
+      splitString(p_inputTopic, "/");
   for (auto it_transformation : m_transformations) {
     p_outputPayload = p_inputPayload;
-    if (p_inputTopic.size() <= it_transformation.fromTopic) {
+    if (l_inputTopicSplitted.size() <= it_transformation.fromTopic) {
       /* complain */
     } else if (it_transformation.asType == "") {
       p_outputPayload[it_transformation.toPayload] =
-          p_inputTopic.at(it_transformation.fromTopic);
+          l_inputTopicSplitted.at(it_transformation.fromTopic);
     } else {
       /*switch(it_transformation.asType){
           case Number:

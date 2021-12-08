@@ -17,7 +17,7 @@ class StreamTransformerTopicToPayload : public StreamTransformer {
  public:
   StreamTransformerTopicToPayload(){};
   void setup(const nlohmann::json& p_json) override;
-  void execute(const std::vector<std::string>& p_inputTopic,
+  void execute(const std::string& p_inputTopic,
                const nlohmann::json& p_inputPayload, std::string& p_outputTopic,
                nlohmann::json& p_outputPayload) override;
 

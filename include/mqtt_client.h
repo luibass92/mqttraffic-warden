@@ -3,6 +3,8 @@
 
 #include "mqtt/async_client.h"
 #include "mqtt_client_connection_callback.h"
+#include "nlohmann/json.hpp"
+#include "tbb/concurrent_queue.h"
 
 namespace tw {
 
@@ -42,7 +44,10 @@ class MqttClient {
   MqttClient(MqttClient const&) = delete;
   void operator=(MqttClient const&) = delete;
 
-  void initCallback();
+  void initCallback(
+      const std::list<std::string>& p_topics,
+      tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>*
+          p_messageQueue);
   void connect();
   void disconnect();
   void unsubscribe(const std::string& p_topic);

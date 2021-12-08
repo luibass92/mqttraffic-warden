@@ -10,12 +10,12 @@
 	"privateKey": "",
 	"routes": [{
 			"name": "21st Street",
-			"inputTopic": "/foo1/bar1",
-			"outputTopic": "/bar1/foo1",
+			"inputTopic": "foo1/bar1",
+			"outputTopic": "bar1/foo1",
 			"topicToPayload": [{
 				"from": 1,
 				"to": "producer",
-				"as": "number"
+				"as": ""
 			}],
 			"payloadToPayload": [{
 				"from": "temp",
@@ -35,8 +35,8 @@
 		},
 		{
 			"name": "New Avenue",
-			"inputTopic": "/foo2/bar2",
-			"outputTopic": "/bar2/foo2",
+			"inputTopic": "foo2/bar2",
+			"outputTopic": "bar2/foo2",
 			"topicToPayload": [{
 				"from": 2,
 				"to": "producer_subset",

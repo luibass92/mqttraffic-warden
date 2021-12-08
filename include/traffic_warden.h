@@ -5,6 +5,7 @@
 #include <optional>
 
 #include "nlohmann/json.hpp"
+#include "tbb/concurrent_queue.h"
 
 namespace tw {
 
@@ -36,7 +37,18 @@ class TrafficWarden {
 
   RouteConfigurations_t retrieve_routes(const nlohmann::json& p_routes);
 
+  void transform();
+  void publish();
+
+  RouteConfigurations_t m_routes;
   std::shared_ptr<MqttClient> m_mqttClient;
+
+  std::unordered_map<std::string, std::string> m_topicToRoute;
+  tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>
+      m_streamTransformerQueue;
+  tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>
+      m_publisherQueue;
+  std::thread m_streamTransformerDataProducer;
 };
 
 }  // namespace tw

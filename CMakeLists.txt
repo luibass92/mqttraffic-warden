@@ -100,27 +100,32 @@ else()
 endif()
 
 
-#find_library(PAHO_MQTT_C_LIBRARY NAMES paho-mqtt3c HINTS ${PAHO_MQTT_C_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
-#find_library(PAHO_MQTT_A_LIBRARY NAMES paho-mqtt3a HINTS ${PAHO_MQTT_C_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
-#find_library(PAHO_MQTT_CS_LIBRARY NAMES paho-mqtt3cs HINTS ${PAHO_MQTT_C_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
-#find_library(PAHO_MQTT_AS_LIBRARY NAMES paho-mqtt3as HINTS ${PAHO_MQTT_C_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
-#find_library(PAHO_MQTT_CPP_LIBRARY NAMES paho-mqttpp3 HINTS ${PAHO_MQTT_CPP_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
-#find_library(PAHO_MQTT_C_LIBRARY NAMES paho-mqtt3c HINTS ${PAHO_MQTT_C_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
-#find_library(PAHO_MQTT_A_LIBRARY NAMES paho-mqtt3a HINTS ${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
-find_library(PAHO_MQTT_CS_LIBRARY NAMES paho-mqtt3cs HINTS ${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
-find_library(PAHO_MQTT_AS_LIBRARY NAMES paho-mqtt3as HINTS ${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
-find_library(PAHO_MQTT_CPP_LIBRARY NAMES paho-mqttpp3 HINTS ${PAHO_MQTT_CPP_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
+#
+# libraries
+#
+
+# json_schema_validator
 find_library(JSON_SCHEMA_VALIDATOR_LIBRARY nlohmann_json_schema_validator HINTS ${JSON_SCHEMA_VALIDATOR_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
 
-#if(NOT TARGET eclipse-paho-mqtt-c)
-#    set(eclipse-paho-mqtt-c_DIR "${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib/cmake/eclipse-paho-mqtt-c")
-#    find_package(eclipse-paho-mqtt-c REQUIRED)
-#endif()
-#if(NOT TARGET PahoMqttCpp)
-#    set(PahoMqttC_DIR "${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib/cmake/PahoMqttC")
-#    set(PahoMqttCpp_DIR "${PAHO_MQTT_CPP_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib/cmake/PahoMqttCpp")
-#    find_package(PahoMqttCpp REQUIRED)
-#endif()
+# paho
+if(NOT TARGET PahoMqttCpp)
+    set(CMAKE_PREFIX_PATH "${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}")
+    if(PAHO_WITH_SSL MATCHES "OFF")
+        message("PAHO_WITH_SSL is OFF")
+        set(PAHO_MQTT_C_LIBRARIES "${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib/libpaho-mqtt3a.so")
+    else()
+        message("PAHO_WITH_SSL is ON")
+        set(PAHO_MQTT_C_LIBRARIES "${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib/libpaho-mqtt3as.so")
+    endif()
+    set(PAHO_MQTT_C_INCLUDE_DIRS "${PAHO_MQTT_C_PATH}/include")
+    set(PahoMqttCpp_DIR "${PAHO_MQTT_CPP_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib/cmake/PahoMqttCpp")
+    find_package(PahoMqttCpp REQUIRED)
+    set_target_properties( PahoMqttCpp::paho-mqttpp3 PahoMqttCpp::paho-mqttpp3-static PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${PAHO_MQTT_CPP_PATH}/include"
+    )
+endif()
+
+# spdlog
 if(NOT TARGET spdlog)
     set(spdlog_DIR "${SPDLOG_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib/cmake/spdlog")
     find_package(spdlog REQUIRED)
@@ -163,6 +168,7 @@ endif(LINUX)
 #
 set(PROJECT_INCLUDE_FILES
     ${PROJECT_INCLUDE_DIR}/mqtt_client.h
+    ${PROJECT_INCLUDE_DIR}/utilities.h
     ${PROJECT_INCLUDE_DIR}/mqtt_client_connection_callback.h
     ${PROJECT_INCLUDE_DIR}/mqtt_subscribe_action_listener.h
     ${PROJECT_INCLUDE_DIR}/traffic_warden.h
@@ -174,6 +180,7 @@ set(PROJECT_INCLUDE_FILES
 
 set(PROJECT_SOURCE_FILES
     ${PROJECT_SRC_DIR}/main.cpp
+    ${PROJECT_SRC_DIR}/utilities.cpp
     ${PROJECT_SRC_DIR}/mqtt_client.cpp
     ${PROJECT_SRC_DIR}/traffic_warden.cpp
     ${PROJECT_SRC_DIR}/stream_transformer_topic_to_payload.cpp
@@ -228,11 +235,7 @@ target_link_libraries(
     ## mqttraffic_warden-lib
     #mqttraffic_warden-lib
     # paho
-    #${PAHO_MQTT_C_LIBRARY}
-    #${PAHO_MQTT_A_LIBRARY}
-    ${PAHO_MQTT_CS_LIBRARY}
-    ${PAHO_MQTT_AS_LIBRARY}
-    ${PAHO_MQTT_CPP_LIBRARY}
+    PahoMqttCpp::paho-mqttpp3
     # tbb
     ${TBB_PROXY_LIBRARY}
     # threads
