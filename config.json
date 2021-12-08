@@ -4,7 +4,7 @@
 	"brokerPassword": "guest",
 	"clientId": "",
 	"keepAliveInterval": 60,
-	"ssl": true,
+	"ssl": false,
 	"trustStore": "",
 	"keyStore": "",
 	"privateKey": "",

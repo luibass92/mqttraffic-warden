@@ -1,6 +1,8 @@
 #include "traffic_warden.h"
 
 #include "mqtt_client.h"
+#include "spdlog/spdlog.h"
+#include "stream_transformer_topic_to_payload.h"
 
 namespace tw {
 
@@ -27,7 +29,8 @@ void TrafficWarden::init(const nlohmann::json& p_configurations) {
         l_keepAliveInterval.has_value() ? l_keepAliveInterval.value() : 60);
   }
 
-  // retrieve_routes_infos();
+  RouteConfigurations_t l_routes =
+      retrieve_routes(p_configurations.at("routes"));
 
   m_mqttClient->initCallback();
   m_mqttClient->connect();
@@ -81,4 +84,48 @@ BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
   return std::tie(l_brokerAddress, l_brokerUser, l_brokerPassword, l_clientId,
                   l_keepAliveInterval, l_trustStore, l_keyStore, l_privateKey);
 }
+
+RouteConfigurations_t TrafficWarden::retrieve_routes(
+    const nlohmann::json& p_routes) {
+  RouteConfigurations_t l_result;
+
+  if (!p_routes.is_array()) {
+    /* complain */
+  } else if (p_routes.empty()) {
+    /* complain */
+  } else {
+    for (auto it = p_routes.begin(); it != p_routes.end(); ++it) {
+      if (l_result.find((*it).at("name")) != l_result.end()) {
+        spdlog::warn("Route with name {} already present, ignoring it.",
+                     (*it).at("name"));
+      } else {
+        std::string l_name = (*it).at("name");
+        std::string l_inputTopic = (*it).at("inputTopic");
+        std::string l_outputTopic = (*it).at("outputTopic");
+        std::list<std::shared_ptr<StreamTransformer>> l_streamTransformers;
+        if ((*it).contains("topicToPayload")) {
+          std::shared_ptr<StreamTransformerTopicToPayload> l_streamTransformer =
+              std::make_shared<StreamTransformerTopicToPayload>();
+          l_streamTransformer->setup((*it).at("topicToPayload"));
+          l_streamTransformers.push_back(l_streamTransformer);
+        }
+        if ((*it).contains("topicToTopic")) {
+          /* do something */
+        }
+        if ((*it).contains("payloadToPayload")) {
+          /* do something */
+        }
+        if ((*it).contains("payloadToTopic")) {
+          /* do something */
+        }
+
+        l_result.insert({l_name, std::make_tuple(l_inputTopic, l_outputTopic,
+                                                 l_streamTransformers)});
+      }
+    }
+  }
+
+  return l_result;
+}
+
 }  // namespace tw

@@ -15,7 +15,7 @@ typedef struct {
 
 class StreamTransformerTopicToPayload : public StreamTransformer {
  public:
-  StreamTransformerTopicToPayload();
+  StreamTransformerTopicToPayload(){};
   void setup(const nlohmann::json& p_json) override;
   void execute(const std::vector<std::string>& p_inputTopic,
                const nlohmann::json& p_inputPayload, std::string& p_outputTopic,

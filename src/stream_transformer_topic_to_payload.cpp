@@ -7,7 +7,7 @@ void StreamTransformerTopicToPayload::setup(const nlohmann::json& p_json) {
   if (p_json.empty()) return;
   for (auto it = p_json.begin(); it != p_json.end(); ++it) {
     if (!(*it).contains("from") || !(*it).contains("to") ||
-        !(*it)["from"].is_number_integer() || !(*it)["from"].is_string())
+        !(*it)["from"].is_number_integer() || !(*it)["to"].is_string())
       throw;
 
     // mandatory fields
