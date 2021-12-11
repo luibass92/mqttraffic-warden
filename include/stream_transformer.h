@@ -4,6 +4,17 @@
 #include "nlohmann/json.hpp"
 
 namespace tw {
+
+enum class JsonType {
+  Number = 0,
+  String,
+  Boolean,
+  Object,
+  Array,
+  Null,
+  JsonTypeUnknown
+};
+
 class StreamTransformer {
  public:
   StreamTransformer() {}

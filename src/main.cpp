@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 
+#include "exceptions.h"
 #include "mqtt_client.h"
 #include "nlohmann/json-schema.hpp"
 #include "spdlog/sinks/rotating_file_sink.h"
@@ -115,20 +116,20 @@ void initLogger(const std::string& p_logLevel) {
 int main() {
   printLogo();
   initLogger("trace");
-  spdlog::trace("trace");
-  spdlog::debug("debug");
-  spdlog::info("info");
-  spdlog::warn("warn");
-  spdlog::error("error");
-  spdlog::critical("critical");
 
-  // tw::TrafficWarden l_trafficWarden(
-  //     nlohmann::json::parse(std::ifstream("config.json")));
-  tw::TrafficWarden l_trafficWarden;
-  auto l_config = std::ifstream("config.json");
-  l_trafficWarden.init(nlohmann::json::parse(l_config));
+  try {
+    tw::TrafficWarden l_trafficWarden;
+    auto l_config = std::ifstream("config.json");
+    l_trafficWarden.init(nlohmann::json::parse(l_config));
+  } catch (TrafficWardenInitializationException& twie) {
+    spdlog::error("{}", twie.what());
+    return EXIT_FAILURE;
+  } catch (std::exception& e) {
+    spdlog::error("{}", e.what());
+    return EXIT_FAILURE;
+  }
 
   while (std::tolower(std::cin.get()) != 'q')
     ;
-  return 0;
+  return EXIT_SUCCESS;
 }

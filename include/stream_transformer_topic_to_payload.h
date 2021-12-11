@@ -3,17 +3,20 @@
 
 #include <list>
 
+#include "reflection.h"
 #include "stream_transformer.h"
 
 namespace tw {
 
 typedef struct {
-  int fromTopic;
+  unsigned long fromTopic;
   std::string toPayload;
-  std::string asType;
+  JsonType asType;
 } TopicToPayloadTransformation_t;
 
 class StreamTransformerTopicToPayload : public StreamTransformer {
+  ADD_CLASS_NAME(StreamTransformerTopicToPayload);
+
  public:
   StreamTransformerTopicToPayload(){};
   void setup(const nlohmann::json& p_json) override;
@@ -22,7 +25,8 @@ class StreamTransformerTopicToPayload : public StreamTransformer {
                nlohmann::json& p_outputPayload) override;
 
  private:
-  std::list<tw::TopicToPayloadTransformation_t> m_transformations;
+  void validate(const nlohmann::json& p_json);
+  tw::TopicToPayloadTransformation_t m_transformation;
 };
 
 }  // namespace tw

@@ -10,12 +10,12 @@
 	"privateKey": "",
 	"routes": [{
 			"name": "21st Street",
-			"inputTopic": "foo1/bar1",
+			"inputTopic": "foo1/1",
 			"outputTopic": "bar1/foo1",
 			"topicToPayload": [{
 				"from": 1,
 				"to": "producer",
-				"as": ""
+				"as": "number"
 			}],
 			"payloadToPayload": [{
 				"from": "temp",
