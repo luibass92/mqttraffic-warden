@@ -178,6 +178,7 @@ set(PROJECT_INCLUDE_FILES
     ${PROJECT_INCLUDE_DIR}/traffic_warden.h
     ${PROJECT_INCLUDE_DIR}/stream_transformer.h
     ${PROJECT_INCLUDE_DIR}/stream_transformer_topic_to_payload.h
+    ${PROJECT_INCLUDE_DIR}/stream_transformer_topic_to_topic.h
 
 )
 
@@ -188,6 +189,7 @@ set(PROJECT_SOURCE_FILES
     ${PROJECT_SRC_DIR}/mqtt_client.cpp
     ${PROJECT_SRC_DIR}/traffic_warden.cpp
     ${PROJECT_SRC_DIR}/stream_transformer_topic_to_payload.cpp
+    ${PROJECT_SRC_DIR}/stream_transformer_topic_to_topic.cpp
 )
 
 

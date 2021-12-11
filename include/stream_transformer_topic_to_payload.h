@@ -1,8 +1,6 @@
 #ifndef STREAM_TRANSFORMER_TOPIC_TO_PAYLOAD_H
 #define STREAM_TRANSFORMER_TOPIC_TO_PAYLOAD_H
 
-#include <list>
-
 #include "reflection.h"
 #include "stream_transformer.h"
 
@@ -26,7 +24,7 @@ class StreamTransformerTopicToPayload : public StreamTransformer {
 
  private:
   void validate(const nlohmann::json& p_json);
-  tw::TopicToPayloadTransformation_t m_transformation;
+  TopicToPayloadTransformation_t m_transformation;
 };
 
 }  // namespace tw

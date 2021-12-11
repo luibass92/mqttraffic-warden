@@ -4,6 +4,7 @@
 #include "mqtt_client.h"
 #include "spdlog/spdlog.h"
 #include "stream_transformer_topic_to_payload.h"
+#include "stream_transformer_topic_to_topic.h"
 #include "utilities.h"
 
 namespace tw {
@@ -167,15 +168,22 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
 
           for (auto jt = l_topicToPayloads.begin();
                jt != l_topicToPayloads.end(); ++jt) {
-            std::shared_ptr<StreamTransformerTopicToPayload>
-                l_streamTransformer =
-                    std::make_shared<StreamTransformerTopicToPayload>();
+            std::shared_ptr<StreamTransformer> l_streamTransformer =
+                std::make_shared<StreamTransformerTopicToPayload>();
             l_streamTransformer->setup((*jt));
             l_streamTransformers.push_back(l_streamTransformer);
           }
         }
         if ((*it_route).contains("topicToTopic")) {
-          /* do something */
+          nlohmann::json l_topicToTopic = (*it_route).at("topicToTopic");
+
+          for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
+               ++jt) {
+            std::shared_ptr<StreamTransformer> l_streamTransformer =
+                std::make_shared<StreamTransformerTopicToTopic>();
+            l_streamTransformer->setup((*jt));
+            l_streamTransformers.push_back(l_streamTransformer);
+          }
         }
         if ((*it_route).contains("payloadToPayload")) {
           /* do something */
@@ -198,27 +206,21 @@ void TrafficWarden::transform() {
     while (!m_streamTransformerQueue.empty()) {
       std::pair<std::string, nlohmann::json> l_message;
       if (m_streamTransformerQueue.try_pop(l_message)) {
-        std::cout
-            << fmt::format(
-                   "Transform message dequeued --> topic: {} | payload: {}",
-                   l_message.first, l_message.second.dump())
-            << std::endl;
+        nlohmann::json l_inputPayload = l_message.second;
         if (m_topicToRoute.find(l_message.first) != m_topicToRoute.end()) {
           std::string l_route = m_topicToRoute.at(l_message.first);
           auto [l_inputTopic, l_outputTopic, l_streamTransformers] =
               m_routes.at(l_route);
+          // output payload should be equal to input payload at beginning
+          nlohmann::json l_outputPayload = l_inputPayload;
           for (auto l_streamTransformer : l_streamTransformers) {
-            nlohmann::json l_outputPayload;
-            l_streamTransformer->execute(l_inputTopic, l_message.second,
+            l_streamTransformer->execute(l_inputTopic, l_inputPayload,
                                          l_outputTopic, l_outputPayload);
-            std::cout << l_outputPayload << std::endl;
-            m_publisherQueue.push(
-                std::make_pair(l_outputTopic, l_outputPayload));
           }
+          m_publisherQueue.push(std::make_pair(l_outputTopic, l_outputPayload));
         }
       }
     }
-    spdlog::trace("Transform thread sleeping for 1 sec");
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 }
@@ -228,15 +230,10 @@ void TrafficWarden::publish() {
     while (!m_publisherQueue.empty()) {
       std::pair<std::string, nlohmann::json> l_message;
       if (m_publisherQueue.try_pop(l_message)) {
-        std::cout << fmt::format(
-                         "Publish message dequeued --> topic: {} | payload: {}",
-                         l_message.first, l_message.second.dump())
-                  << std::endl;
         m_mqttClient->publish(l_message.first, l_message.second.dump(), 2,
                               false);
       }
     }
-    spdlog::trace("Publish thread sleeping for 1 sec");
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 }

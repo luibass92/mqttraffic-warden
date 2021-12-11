@@ -4,22 +4,41 @@
 
 namespace utilities {
 
-std::vector<std::string> splitString(const std::string& inputStr,
-                                     const std::string& token) {
-  std::string str = inputStr;
+std::vector<std::string> splitString(const std::string& p_string,
+                                     const std::string& p_token) {
+  std::string l_string = p_string;
   std::vector<std::string> result;
-  while (str.size()) {
-    std::size_t index = str.find(token);
+  while (l_string.size()) {
+    std::size_t index = l_string.find(p_token);
     if (index != std::string::npos) {
-      result.push_back(str.substr(0, index));
-      str = str.substr(index + token.size());
-      if (str.size() == 0) result.push_back(str);
+      result.push_back(l_string.substr(0, index));
+      l_string = l_string.substr(index + p_token.size());
+      if (l_string.size() == 0) result.push_back(l_string);
     } else {
-      result.push_back(str);
-      str.clear();
+      result.push_back(l_string);
+      l_string.clear();
     }
   }
   return result;
+}
+
+std::string joinStrings(const std::vector<std::string>& p_strings,
+                        const std::string& p_token) {
+  if (p_strings.size() == 0) {
+    return std::string();
+  } else {
+    std::string result = p_strings.at(0);
+    for (std::vector<std::string>::const_iterator str = p_strings.begin();
+         str != p_strings.end(); ++str) {
+      if (str == p_strings.end() - 1) {
+        break;
+      } else {
+        result.append(p_token);
+        result.append(*(str + 1));
+      }
+    }
+    return result;
+  }
 }
 
 bool isBool(std::string myString) {

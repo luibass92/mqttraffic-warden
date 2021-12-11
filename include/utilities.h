@@ -10,6 +10,9 @@ namespace utilities {
 std::vector<std::string> splitString(const std::string& inputStr,
                                      const std::string& token);
 
+std::string joinStrings(const std::vector<std::string>& p_strings,
+                        const std::string& p_token);
+
 bool isBool(std::string myString);
 
 bool isInt(std::string myString);
