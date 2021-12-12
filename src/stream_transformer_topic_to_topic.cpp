@@ -28,7 +28,7 @@ void StreamTransformerTopicToTopic::execute(const std::string& p_inputTopic,
       utilities::splitString(p_inputTopic, "/");
   std::vector<std::string> l_outputTopicSplitted =
       utilities::splitString(p_outputTopic, "/");
-  // p_outputPayload = p_inputPayload;
+
   if (l_inputTopicSplitted.size() <= m_transformation.fromTopic) {
     spdlog::error(
         "The input sub-topic at index '{}' does not exists. Input topic is "
@@ -36,7 +36,7 @@ void StreamTransformerTopicToTopic::execute(const std::string& p_inputTopic,
         m_transformation.fromTopic, p_inputTopic,
         l_inputTopicSplitted.size() - 1);
     throw StreamTransformerExecutionException();
-  } else if (l_outputTopicSplitted.size() + 1 <= m_transformation.toTopic) {
+  } else if (l_outputTopicSplitted.size() <= m_transformation.toTopic) {
     spdlog::warn(
         "The output sub-topic at index '{}' does not exists. Output sub-topic "
         "will be appended at the end of the output topic '{}'",

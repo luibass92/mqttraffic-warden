@@ -54,7 +54,7 @@ void StreamTransformerTopicToPayload::execute(const std::string& p_inputTopic,
                                               nlohmann::json& p_outputPayload) {
   std::vector<std::string> l_inputTopicSplitted =
       utilities::splitString(p_inputTopic, "/");
-  // p_outputPayload = p_inputPayload;
+
   if (l_inputTopicSplitted.size() <= m_transformation.fromTopic) {
     spdlog::error(
         "The input sub-topic at index '{}' does not exists. Input topic is "

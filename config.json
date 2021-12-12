@@ -49,7 +49,7 @@
 			}],
 			"payloadToTopic": [{
 				"from": "voltage",
-				"to": "voltage1"
+				"to": 2
 			}],
 			"topicToTopic": [{
 				"from": 1,

@@ -99,7 +99,7 @@ void StreamTransformerPayloadToPayload::execute(
   }
   if (!m_transformation.keep) {
     // If 'keep' is false, the original payload key-value pair must be deleted
-    p_outputPayload[m_transformation.fromPayload] = nullptr;
+    p_outputPayload.erase(m_transformation.fromPayload);
   }
 }
 

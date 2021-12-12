@@ -4,6 +4,7 @@
 #include "mqtt_client.h"
 #include "spdlog/spdlog.h"
 #include "stream_transformer_payload_to_payload.h"
+#include "stream_transformer_payload_to_topic.h"
 #include "stream_transformer_topic_to_payload.h"
 #include "stream_transformer_topic_to_topic.h"
 #include "utilities.h"
@@ -198,7 +199,15 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
           }
         }
         if ((*it_route).contains("payloadToTopic")) {
-          /* do something */
+          nlohmann::json l_topicToTopic = (*it_route).at("payloadToTopic");
+
+          for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
+               ++jt) {
+            std::shared_ptr<StreamTransformer> l_streamTransformer =
+                std::make_shared<StreamTransformerPayloadToTopic>();
+            l_streamTransformer->setup((*jt));
+            l_streamTransformers.push_back(l_streamTransformer);
+          }
         }
 
         l_result.insert({l_name, std::make_tuple(l_inputTopic, l_outputTopic,

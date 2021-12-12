@@ -180,6 +180,7 @@ set(PROJECT_INCLUDE_FILES
     ${PROJECT_INCLUDE_DIR}/stream_transformer_topic_to_payload.h
     ${PROJECT_INCLUDE_DIR}/stream_transformer_topic_to_topic.h
     ${PROJECT_INCLUDE_DIR}/stream_transformer_payload_to_payload.h
+    ${PROJECT_INCLUDE_DIR}/stream_transformer_payload_to_topic.h
 
 )
 
@@ -188,11 +189,13 @@ set(PROJECT_SOURCE_FILES
     ${PROJECT_SRC_DIR}/main.cpp
     ${PROJECT_SRC_DIR}/cast.cpp
     ${PROJECT_SRC_DIR}/utilities.cpp
+    ${PROJECT_SRC_DIR}/json_utilities.cpp
     ${PROJECT_SRC_DIR}/mqtt_client.cpp
     ${PROJECT_SRC_DIR}/traffic_warden.cpp
     ${PROJECT_SRC_DIR}/stream_transformer_topic_to_payload.cpp
     ${PROJECT_SRC_DIR}/stream_transformer_topic_to_topic.cpp
     ${PROJECT_SRC_DIR}/stream_transformer_payload_to_payload.cpp
+    ${PROJECT_SRC_DIR}/stream_transformer_payload_to_topic.cpp
 )
 
 
