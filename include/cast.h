@@ -19,49 +19,29 @@ T lexical_cast(const char* str) {
 
 /* trivial conversion */
 template <>
-std::string lexical_cast(const char* str) {
-  return str;
-}
+std::string lexical_cast(const char* str);
 
 /* conversions that exist in stl */
 template <>
-float lexical_cast(const char* str) {
-  return std::strtof(str, nullptr);
-}
+float lexical_cast(const char* str);
 template <>
-long lexical_cast(const char* str) {
-  return std::strtol(str, nullptr, 0);
-}
+long lexical_cast(const char* str);
 template <>
-long long lexical_cast(const char* str) {
-  return std::strtoll(str, nullptr, 0);
-}
+long long lexical_cast(const char* str);
 template <>
-unsigned long lexical_cast(const char* str) {
-  return std::strtoul(str, nullptr, 0);
-}
+unsigned long lexical_cast(const char* str);
 template <>
-unsigned long long lexical_cast(const char* str) {
-  return std::strtoull(str, nullptr, 0);
-}
+unsigned long long lexical_cast(const char* str);
 
 /* conversions that need to be truncated */
 template <>
-short lexical_cast(const char* str) {
-  return static_cast<short>(lexical_cast<long>(str));
-}
+short lexical_cast(const char* str);
 template <>
-int lexical_cast(const char* str) {
-  return static_cast<int>(lexical_cast<long>(str));
-}
+int lexical_cast(const char* str);
 template <>
-unsigned short lexical_cast(const char* str) {
-  return static_cast<unsigned short>(lexical_cast<unsigned long>(str));
-}
+unsigned short lexical_cast(const char* str);
 template <>
-unsigned int lexical_cast(const char* str) {
-  return static_cast<unsigned int>(lexical_cast<unsigned long>(str));
-}
+unsigned int lexical_cast(const char* str);
 
 }  // namespace utilities
 #endif  // CAST_H

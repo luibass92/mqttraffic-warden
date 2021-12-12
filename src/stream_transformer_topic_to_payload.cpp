@@ -11,7 +11,10 @@ namespace tw {
 
 void StreamTransformerTopicToPayload::setup(const nlohmann::json& p_json) {
   try {
-    validate(p_json);
+    if (!is_valid_setup(p_json)) {
+      spdlog::error("{} has an invalid setup", get_class_name());
+      throw StreamTransformerSetupException();
+    };
 
     // mandatory fields
     tw::TopicToPayloadTransformation_t l_transformation;
@@ -105,23 +108,29 @@ void StreamTransformerTopicToPayload::execute(const std::string& p_inputTopic,
   }
 }
 
-void StreamTransformerTopicToPayload::validate(const nlohmann::json& p_json) {
+bool StreamTransformerTopicToPayload::is_valid_setup(
+    const nlohmann::json& p_json) {
   if (!p_json.is_object()) {
     spdlog::error("{} is not a JSON object", get_class_name());
-    throw StreamTransformerSetupException();
+    return false;
   } else if (!p_json.contains("from")) {
     spdlog::error("{} must contain a '{}' key", get_class_name(), "from");
-    throw StreamTransformerSetupException();
+    return false;
   } else if (!p_json["from"].is_number_unsigned()) {
     spdlog::error("{} '{}' value must be a number", get_class_name(), "from");
-    throw StreamTransformerSetupException();
+    return false;
   } else if (!p_json.contains("to")) {
     spdlog::error("{} must contain a '{}' key", get_class_name(), "to");
-    throw StreamTransformerSetupException();
+    return false;
   } else if (!p_json["to"].is_string()) {
     spdlog::error("{} '{}' value must be a string", get_class_name(), "to");
-    throw StreamTransformerSetupException();
+    return false;
+  } else if (p_json.contains("as") && !p_json["as"].is_string()) {
+    spdlog::error("{} '{}' value must be a string", get_class_name(), "as");
+    return false;
   }
+
+  return true;
 }
 
 }  // namespace tw

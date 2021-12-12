@@ -1,5 +1,5 @@
-#ifndef STREAM_TRANSFORMER_TOPIC_TO_PAYLOAD_H
-#define STREAM_TRANSFORMER_TOPIC_TO_PAYLOAD_H
+#ifndef STREAM_TRANSFORMER_PAYLOAD_TO_PAYLOAD_H
+#define STREAM_TRANSFORMER_PAYLOAD_TO_PAYLOAD_H
 
 #include "reflection.h"
 #include "stream_transformer.h"
@@ -7,16 +7,17 @@
 namespace tw {
 
 typedef struct {
-  unsigned long fromTopic;
+  std::string fromPayload;
   std::string toPayload;
   JsonType asType;
-} TopicToPayloadTransformation_t;
+  bool keep;
+} PayloadToPayloadTransformation_t;
 
-class StreamTransformerTopicToPayload : public StreamTransformer {
-  ADD_CLASS_NAME(StreamTransformerTopicToPayload);
+class StreamTransformerPayloadToPayload : public StreamTransformer {
+  ADD_CLASS_NAME(StreamTransformerPayloadToPayload);
 
  public:
-  StreamTransformerTopicToPayload(){};
+  StreamTransformerPayloadToPayload(){};
   void setup(const nlohmann::json& p_json) override;
   void execute(const std::string& p_inputTopic,
                const nlohmann::json& p_inputPayload, std::string& p_outputTopic,
@@ -24,8 +25,9 @@ class StreamTransformerTopicToPayload : public StreamTransformer {
 
  private:
   bool is_valid_setup(const nlohmann::json& p_json);
-  TopicToPayloadTransformation_t m_transformation;
+  PayloadToPayloadTransformation_t m_transformation;
 };
 
 }  // namespace tw
-#endif  // STREAM_TRANSFORMER_TOPIC_TO_PAYLOAD_H
+
+#endif  // STREAM_TRANSFORMER_PAYLOAD_TO_PAYLOAD_H

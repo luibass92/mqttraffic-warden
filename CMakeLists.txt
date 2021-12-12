@@ -167,29 +167,32 @@ endif(LINUX)
 # sources
 #
 set(PROJECT_INCLUDE_FILES
+    ${PROJECT_INCLUDE_DIR}/cast.h
     ${PROJECT_INCLUDE_DIR}/mqtt_client.h
     ${PROJECT_INCLUDE_DIR}/reflection.h
     ${PROJECT_INCLUDE_DIR}/exceptions.h
     ${PROJECT_INCLUDE_DIR}/utilities.h
     ${PROJECT_INCLUDE_DIR}/json_utilities.h
-    ${PROJECT_INCLUDE_DIR}/cast.h
     ${PROJECT_INCLUDE_DIR}/mqtt_client_connection_callback.h
     ${PROJECT_INCLUDE_DIR}/mqtt_subscribe_action_listener.h
     ${PROJECT_INCLUDE_DIR}/traffic_warden.h
     ${PROJECT_INCLUDE_DIR}/stream_transformer.h
     ${PROJECT_INCLUDE_DIR}/stream_transformer_topic_to_payload.h
     ${PROJECT_INCLUDE_DIR}/stream_transformer_topic_to_topic.h
+    ${PROJECT_INCLUDE_DIR}/stream_transformer_payload_to_payload.h
 
 )
 
 
 set(PROJECT_SOURCE_FILES
     ${PROJECT_SRC_DIR}/main.cpp
+    ${PROJECT_SRC_DIR}/cast.cpp
     ${PROJECT_SRC_DIR}/utilities.cpp
     ${PROJECT_SRC_DIR}/mqtt_client.cpp
     ${PROJECT_SRC_DIR}/traffic_warden.cpp
     ${PROJECT_SRC_DIR}/stream_transformer_topic_to_payload.cpp
     ${PROJECT_SRC_DIR}/stream_transformer_topic_to_topic.cpp
+    ${PROJECT_SRC_DIR}/stream_transformer_payload_to_payload.cpp
 )
 
 
