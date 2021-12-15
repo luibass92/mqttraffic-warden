@@ -8,53 +8,66 @@
 	"trustStore": "",
 	"keyStore": "",
 	"privateKey": "",
-	"routes": [{
+	"routes": [
+		{
 			"name": "21st Street",
 			"inputTopic": "foo1/1",
 			"outputTopic": "bar1/foo1",
-			"topicToPayload": [{
-				"from": 1,
-				"to": "producer",
-				"as": "number"
-			}],
-			"payloadToPayload": [{
-				"from": "temp",
-				"to": "input_temp",
-				"as": "number",
-				"keep": true
-			}],
-			"payloadToTopic": [{
-				"from": "temp",
-				"to": 1,
-				"keep": true
-			}],
-			"topicToTopic": [{
-				"from": 1,
-				"to": 2
-			}]
+			"streamTransformers": [
+				{
+					"type": "topicToPayload",
+					"from": 1,
+					"to": "producer",
+					"as": "number"
+				},
+				{
+					"type": "payloadToPayload",
+					"from": "temp",
+					"to": "input_temp",
+					"as": "number",
+					"keep": true
+				},
+				{
+					"type": "payloadToTopic",
+					"from": "temp",
+					"to": 1,
+					"keep": true
+				},
+				{
+					"type": "topicToTopic",
+					"from": 1,
+					"to": 2
+				}
+			]
 		},
 		{
 			"name": "New Avenue",
 			"inputTopic": "foo2/bar2",
 			"outputTopic": "bar2/foo2",
-			"topicToPayload": [{
-				"from": 2,
-				"to": "producer_subset",
-				"as": "string"
-			}],
-			"payloadToPayload": [{
-				"from": "voltage",
-				"to": "input_voltage",
-				"as": "number"
-			}],
-			"payloadToTopic": [{
-				"from": "voltage",
-				"to": 2
-			}],
-			"topicToTopic": [{
-				"from": 1,
-				"to": 2
-			}]
+			"streamTransformers": [
+				{
+					"type": "topicToPayload",
+					"from": 2,
+					"to": "producer_subset",
+					"as": "string"
+				},
+				{
+					"type": "payloadToPayload",
+					"from": "voltage",
+					"to": "input_voltage",
+					"as": "number"
+				},
+				{
+					"type": "payloadToTopic",
+					"from": "voltage",
+					"to": 2
+				},
+				{
+					"type": "topicToTopic",
+					"from": 1,
+					"to": 2
+				}
+			]
 		}
 	]
 }

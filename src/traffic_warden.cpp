@@ -47,6 +47,8 @@ void TrafficWarden::init(const nlohmann::json& p_configurations) {
 
     if (t1.joinable()) t1.join();
     if (t2.joinable()) t2.join();
+  } else {
+    spdlog::warn("No routes have been defined, exiting.");
   }
 }
 
@@ -161,56 +163,68 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
         std::string l_name = (*it_route).at(k_routeName);
         std::string l_inputTopic = (*it_route).at(k_routeInputTopic);
         std::string l_outputTopic = (*it_route).at(k_routeOutputTopic);
-        std::list<std::shared_ptr<StreamTransformer>> l_streamTransformers;
-        if ((*it_route).contains(k_routeTopicToPayload)) {
-          nlohmann::json l_topicToPayloads =
-              (*it_route).at(k_routeTopicToPayload);
-
-          for (auto jt = l_topicToPayloads.begin();
-               jt != l_topicToPayloads.end(); ++jt) {
-            std::shared_ptr<StreamTransformer> l_streamTransformer =
-                std::make_shared<StreamTransformerTopicToPayload>();
-            l_streamTransformer->setup((*jt));
-            l_streamTransformers.push_back(l_streamTransformer);
+        if (!(*it_route).contains(k_streamTransformers)) {
+          spdlog::info("No stream transformer configured for route {}", l_name);
+        } else if (!(*it_route).at(k_streamTransformers).is_array()) {
+          spdlog::error("streamTransformers field must be an array");
+        } else {
+          std::list<std::shared_ptr<StreamTransformer>> l_streamTransformerList;
+          nlohmann::json l_streamTransformers =
+              (*it_route).at(k_streamTransformers);
+          for (auto it_streamTransformer = l_streamTransformers.begin();
+               it_streamTransformer != l_streamTransformers.end();
+               ++it_streamTransformer) {
+            if (!it_streamTransformer->contains(k_transformerType)) {
+              spdlog::error(
+                  "Found a stream transformer without mandatory '{}' "
+                  "attribute, ignoring it.",
+                  k_transformerType);
+            } else if (!(*it_streamTransformer)
+                            .at(k_transformerType)
+                            .is_string()) {
+              spdlog::error(
+                  "Stream transformer '{}' attribute must be a string");
+            } else if (std::none_of(
+                           k_streamTransformerTypes.begin(),
+                           k_streamTransformerTypes.end(),
+                           [&it_streamTransformer](std::string it_transformer) {
+                             return it_transformer ==
+                                    (*it_streamTransformer)
+                                        .at(k_transformerType);
+                           })) {
+              spdlog::error("'{}' must have one of the following values: {}",
+                            k_transformerType,
+                            fmt::join(k_streamTransformerTypes, ", "));
+            } else {
+              std::shared_ptr<StreamTransformer> l_streamTransformer;
+              if (k_topicToPayload ==
+                  (*it_streamTransformer).at(k_transformerType)) {
+                l_streamTransformer =
+                    std::make_shared<StreamTransformerTopicToPayload>();
+              }
+              if (k_topicToTopic ==
+                  (*it_streamTransformer).at(k_transformerType)) {
+                l_streamTransformer =
+                    std::make_shared<StreamTransformerTopicToTopic>();
+              }
+              if (k_payloadToTopic ==
+                  (*it_streamTransformer).at(k_transformerType)) {
+                l_streamTransformer =
+                    std::make_shared<StreamTransformerPayloadToTopic>();
+              }
+              if (k_payloadToPayload ==
+                  (*it_streamTransformer).at(k_transformerType)) {
+                l_streamTransformer =
+                    std::make_shared<StreamTransformerPayloadToPayload>();
+              }
+              l_streamTransformer->setup((*it_streamTransformer));
+              l_streamTransformerList.push_back(l_streamTransformer);
+            }
           }
-        }
-        if ((*it_route).contains(k_routeTopicToTopic)) {
-          nlohmann::json l_topicToTopic = (*it_route).at(k_routeTopicToTopic);
 
-          for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
-               ++jt) {
-            std::shared_ptr<StreamTransformer> l_streamTransformer =
-                std::make_shared<StreamTransformerTopicToTopic>();
-            l_streamTransformer->setup((*jt));
-            l_streamTransformers.push_back(l_streamTransformer);
-          }
+          l_result.insert({l_name, std::make_tuple(l_inputTopic, l_outputTopic,
+                                                   l_streamTransformerList)});
         }
-        if ((*it_route).contains(k_routePayloadToPayload)) {
-          nlohmann::json l_topicToTopic =
-              (*it_route).at(k_routePayloadToPayload);
-
-          for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
-               ++jt) {
-            std::shared_ptr<StreamTransformer> l_streamTransformer =
-                std::make_shared<StreamTransformerPayloadToPayload>();
-            l_streamTransformer->setup((*jt));
-            l_streamTransformers.push_back(l_streamTransformer);
-          }
-        }
-        if ((*it_route).contains(k_routePayloadToTopic)) {
-          nlohmann::json l_topicToTopic = (*it_route).at(k_routePayloadToTopic);
-
-          for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
-               ++jt) {
-            std::shared_ptr<StreamTransformer> l_streamTransformer =
-                std::make_shared<StreamTransformerPayloadToTopic>();
-            l_streamTransformer->setup((*jt));
-            l_streamTransformers.push_back(l_streamTransformer);
-          }
-        }
-
-        l_result.insert({l_name, std::make_tuple(l_inputTopic, l_outputTopic,
-                                                 l_streamTransformers)});
       }
     }
   }
@@ -247,8 +261,8 @@ void TrafficWarden::publish() {
     while (!m_publisherQueue.empty()) {
       std::pair<std::string, nlohmann::json> l_message;
       if (m_publisherQueue.try_pop(l_message)) {
-        m_mqttClient->publish(l_message.first, l_message.second.dump(), 2,
-                              false);
+        m_mqttClient->publish(l_message.first, l_message.second.dump(),
+                              k_defaultQos, false);
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));

@@ -45,13 +45,19 @@ class TrafficWarden {
   inline static std::string const k_routeName = "name";
   inline static std::string const k_routeInputTopic = "inputTopic";
   inline static std::string const k_routeOutputTopic = "outputTopic";
-  inline static std::string const k_routeTopicToTopic = "topicToTopic";
-  inline static std::string const k_routeTopicToPayload = "topicToPayload";
-  inline static std::string const k_routePayloadToTopic = "payloadToTopic";
-  inline static std::string const k_routePayloadToPayload = "payloadToPayload";
+
+  inline static std::string const k_streamTransformers = "streamTransformers";
+  inline static std::string const k_transformerType = "type";
+  inline static std::string const k_topicToTopic = "topicToTopic";
+  inline static std::string const k_topicToPayload = "topicToPayload";
+  inline static std::string const k_payloadToTopic = "payloadToTopic";
+  inline static std::string const k_payloadToPayload = "payloadToPayload";
+  inline static std::vector<std::string> const k_streamTransformerTypes = {
+      k_topicToTopic, k_topicToPayload, k_payloadToTopic, k_payloadToPayload};
 
   inline static std::string const k_defaultClientId = "";
   inline static int const k_defaultKeepAliveInterval = 60;
+  inline static int const k_defaultQos = 2;
 
   BrokerConfigurations_t retrieve_broker_infos(
       const nlohmann::json& p_configurations);
