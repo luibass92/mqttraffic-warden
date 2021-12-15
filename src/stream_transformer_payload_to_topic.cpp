@@ -16,12 +16,12 @@ void StreamTransformerPayloadToTopic::setup(const nlohmann::json& p_json) {
   }
 
   // mandatory fields
-  m_transformation.fromPayload = p_json["from"].get<std::string>();
-  m_transformation.toTopic = p_json["to"].get<int>();
+  m_transformation.fromPayload = p_json[k_from].get<std::string>();
+  m_transformation.toTopic = p_json[k_to].get<int>();
 
   // optional fields
-  if (p_json.contains("keep")) {
-    m_transformation.keep = p_json["keep"].get<bool>();
+  if (p_json.contains(k_keep)) {
+    m_transformation.keep = p_json[k_keep].get<bool>();
   } else {
     m_transformation.keep = false;
   }
@@ -58,22 +58,22 @@ bool StreamTransformerPayloadToTopic::is_valid_setup(
     return false;
   }
   // mandatory fields
-  else if (!p_json.contains("from")) {
-    spdlog::error("{} must contain a '{}' key", get_class_name(), "from");
+  else if (!p_json.contains(k_from)) {
+    spdlog::error("{} must contain a '{}' key", get_class_name(), k_from);
     return false;
-  } else if (!p_json["from"].is_string()) {
-    spdlog::error("{} '{}' value must be a string", get_class_name(), "from");
+  } else if (!p_json[k_from].is_string()) {
+    spdlog::error("{} '{}' value must be a string", get_class_name(), k_from);
     return false;
-  } else if (!p_json.contains("to")) {
-    spdlog::error("{} must contain a '{}' key", get_class_name(), "to");
+  } else if (!p_json.contains(k_to)) {
+    spdlog::error("{} must contain a '{}' key", get_class_name(), k_to);
     return false;
-  } else if (!p_json["to"].is_number_unsigned()) {
-    spdlog::error("{} '{}' value must be a number", get_class_name(), "to");
+  } else if (!p_json[k_to].is_number_unsigned()) {
+    spdlog::error("{} '{}' value must be a number", get_class_name(), k_to);
     return false;
   }
   // optional fields
-  else if (p_json.contains("keep") && !p_json["keep"].is_boolean()) {
-    spdlog::error("{} '{}' value must be a boolean", get_class_name(), "keep");
+  else if (p_json.contains(k_keep) && !p_json[k_keep].is_boolean()) {
+    spdlog::error("{} '{}' value must be a boolean", get_class_name(), k_keep);
     return false;
   }
 

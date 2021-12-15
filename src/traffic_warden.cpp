@@ -18,23 +18,20 @@ void TrafficWarden::init(const nlohmann::json& p_configurations) {
   auto [l_host, l_user, l_password, l_clientId, l_keepAliveInterval,
         l_trustStore, l_keyStore, l_privateKey] =
       retrieve_broker_infos(p_configurations);
+
   if (l_trustStore.has_value() && l_keyStore.has_value() &&
       l_privateKey.has_value()) {
     // with ssl
     m_mqttClient = std::make_shared<MqttClient>(
-        l_host, l_clientId.has_value() ? l_clientId.value() : "", l_user,
-        l_password,
-        l_keepAliveInterval.has_value() ? l_keepAliveInterval.value() : 60,
+        l_host, l_clientId, l_user, l_password, l_keepAliveInterval,
         l_trustStore.value(), l_keyStore.value(), l_privateKey.value());
   } else {
     // without ssl
     m_mqttClient = std::make_shared<MqttClient>(
-        l_host, l_clientId.has_value() ? l_clientId.value() : "", l_user,
-        l_password,
-        l_keepAliveInterval.has_value() ? l_keepAliveInterval.value() : 60);
+        l_host, l_clientId, l_user, l_password, l_keepAliveInterval);
   }
 
-  m_routes = retrieve_routes(p_configurations.at("routes"));
+  m_routes = retrieve_routes(p_configurations.at(k_routes));
 
   if (!m_routes.empty()) {
     std::list<std::string> l_inputTopics;
@@ -57,14 +54,14 @@ BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
     const nlohmann::json& p_configurations) {
   // mandatory fields
   std::string l_brokerAddress = "";
-  if (!p_configurations.contains("brokerAddress")) {
-    spdlog::error("The key '{}' is mandatory", "brokerAddress");
+  if (!p_configurations.contains(k_brokerAddress)) {
+    spdlog::error("The key '{}' is mandatory", k_brokerAddress);
     throw TrafficWardenInitializationException();
-  } else if (!p_configurations.at("brokerAddress").is_string()) {
-    spdlog::error("The key '{}' must be a string", "brokerAddress");
+  } else if (!p_configurations.at(k_brokerAddress).is_string()) {
+    spdlog::error("The key '{}' must be a string", k_brokerAddress);
     throw TrafficWardenInitializationException();
   } else {
-    l_brokerAddress = p_configurations.at("brokerAddress").get<std::string>();
+    l_brokerAddress = p_configurations.at(k_brokerAddress).get<std::string>();
     if (!utilities::isValidIp(l_brokerAddress)) {
       spdlog::error("Broker IP address '{}' must be a valid IPv4 or IPv6",
                     l_brokerAddress);
@@ -73,71 +70,71 @@ BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
   }
 
   std::string l_brokerUser = "";
-  if (!p_configurations.contains("brokerUser")) {
-    spdlog::error("The key '{}' is mandatory", "brokerUser");
+  if (!p_configurations.contains(k_brokerUser)) {
+    spdlog::error("The key '{}' is mandatory", k_brokerUser);
     throw TrafficWardenInitializationException();
-  } else if (!p_configurations.at("brokerUser").is_string()) {
-    spdlog::error("The key '{}' must be a string", "brokerUser");
+  } else if (!p_configurations.at(k_brokerUser).is_string()) {
+    spdlog::error("The key '{}' must be a string", k_brokerUser);
     throw TrafficWardenInitializationException();
   } else {
-    l_brokerUser = p_configurations.at("brokerUser").get<std::string>();
+    l_brokerUser = p_configurations.at(k_brokerUser).get<std::string>();
   }
 
   std::string l_brokerPassword = "";
-  if (!p_configurations.contains("brokerPassword")) {
-    spdlog::error("The key '{}' is mandatory", "brokerPassword");
+  if (!p_configurations.contains(k_brokerPassword)) {
+    spdlog::error("The key '{}' is mandatory", k_brokerPassword);
     throw TrafficWardenInitializationException();
-  } else if (!p_configurations.at("brokerPassword").is_string()) {
-    spdlog::error("The key '{}' must be a string", "brokerPassword");
+  } else if (!p_configurations.at(k_brokerPassword).is_string()) {
+    spdlog::error("The key '{}' must be a string", k_brokerPassword);
     throw TrafficWardenInitializationException();
   } else {
-    l_brokerPassword = p_configurations.at("brokerPassword").get<std::string>();
+    l_brokerPassword = p_configurations.at(k_brokerPassword).get<std::string>();
   }
 
+  std::string l_clientId = k_defaultClientId;
+  if (p_configurations.contains(k_clientId))
+    l_clientId = p_configurations.at(k_clientId).get<std::string>();
+
+  int l_keepAliveInterval = k_defaultKeepAliveInterval;
+  if (p_configurations.contains(k_keepAliveInterval))
+    l_keepAliveInterval = p_configurations.at(k_keepAliveInterval).get<int>();
+
   // optional fields
-  std::optional<std::string> l_clientId = std::nullopt;
-  if (p_configurations.contains("clientId"))
-    l_clientId = p_configurations.at("clientId").get<std::string>();
-
-  std::optional<int> l_keepAliveInterval = std::nullopt;
-  if (p_configurations.contains("keepAliveInterval"))
-    l_keepAliveInterval = p_configurations.at("keepAliveInterval").get<int>();
-
   std::optional<std::string> l_trustStore = std::nullopt;
   std::optional<std::string> l_keyStore = std::nullopt;
   std::optional<std::string> l_privateKey = std::nullopt;
-  if (!p_configurations.contains("ssl")) {
-    spdlog::error("The key '{}' is mandatory", "ssl");
+  if (!p_configurations.contains(k_ssl)) {
+    spdlog::error("The key '{}' is mandatory", k_ssl);
     throw TrafficWardenInitializationException();
-  } else if (!p_configurations.at("ssl").is_boolean()) {
-    spdlog::error("The key '{}' must be a boolean", "ssl");
+  } else if (!p_configurations.at(k_ssl).is_boolean()) {
+    spdlog::error("The key '{}' must be a boolean", k_ssl);
     throw TrafficWardenInitializationException();
-  } else if (true == p_configurations.at("ssl").get<bool>()) {
-    if (!p_configurations.contains("trustStore")) {
+  } else if (true == p_configurations.at(k_ssl).get<bool>()) {
+    if (!p_configurations.contains(k_trustStore)) {
       spdlog::error("Since '{}' is set to '{}', the field '{}' is mandatory",
-                    "ssl", p_configurations.at("ssl"), "trustStore");
+                    k_ssl, p_configurations.at(k_ssl), k_trustStore);
       throw TrafficWardenInitializationException();
-    } else if (!p_configurations.at("trustStore").is_string()) {
-      spdlog::error("The key '{}' must be a string", "trustStore");
+    } else if (!p_configurations.at(k_trustStore).is_string()) {
+      spdlog::error("The key '{}' must be a string", k_trustStore);
       throw TrafficWardenInitializationException();
-    } else if (!p_configurations.contains("keyStore")) {
+    } else if (!p_configurations.contains(k_keyStore)) {
       spdlog::error("Since '{}' is set to '{}', the field '{}' is mandatory",
-                    "ssl", p_configurations.at("ssl"), "keyStore");
+                    k_ssl, p_configurations.at(k_ssl), k_keyStore);
       throw TrafficWardenInitializationException();
-    } else if (!p_configurations.at("keyStore").is_string()) {
-      spdlog::error("The key '{}' must be a string", "keyStore");
+    } else if (!p_configurations.at(k_keyStore).is_string()) {
+      spdlog::error("The key '{}' must be a string", k_keyStore);
       throw TrafficWardenInitializationException();
-    } else if (!p_configurations.contains("privateKey")) {
+    } else if (!p_configurations.contains(k_privateKey)) {
       spdlog::error("Since '{}' is set to '{}', the field '{}' is mandatory",
-                    "ssl", p_configurations.at("ssl"), "privateKey");
+                    k_ssl, p_configurations.at(k_ssl), k_privateKey);
       throw TrafficWardenInitializationException();
-    } else if (!p_configurations.at("privateKey").is_string()) {
-      spdlog::error("The key '{}' must be a string", "privateKey");
+    } else if (!p_configurations.at(k_privateKey).is_string()) {
+      spdlog::error("The key '{}' must be a string", k_privateKey);
       throw TrafficWardenInitializationException();
     } else {
-      l_trustStore = p_configurations.at("trustStore").get<std::string>();
-      l_keyStore = p_configurations.at("keyStore").get<std::string>();
-      l_privateKey = p_configurations.at("privateKey").get<std::string>();
+      l_trustStore = p_configurations.at(k_trustStore).get<std::string>();
+      l_keyStore = p_configurations.at(k_keyStore).get<std::string>();
+      l_privateKey = p_configurations.at(k_privateKey).get<std::string>();
     }
   }
 
@@ -157,16 +154,17 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
   } else {
     for (auto it_route = p_routes.begin(); it_route != p_routes.end();
          ++it_route) {
-      if (l_result.find((*it_route).at("name")) != l_result.end()) {
+      if (l_result.find((*it_route).at(k_routeName)) != l_result.end()) {
         spdlog::warn("Route with name {} already present, ignoring it.",
-                     (*it_route).at("name"));
+                     (*it_route).at(k_routeName));
       } else {
-        std::string l_name = (*it_route).at("name");
-        std::string l_inputTopic = (*it_route).at("inputTopic");
-        std::string l_outputTopic = (*it_route).at("outputTopic");
+        std::string l_name = (*it_route).at(k_routeName);
+        std::string l_inputTopic = (*it_route).at(k_routeInputTopic);
+        std::string l_outputTopic = (*it_route).at(k_routeOutputTopic);
         std::list<std::shared_ptr<StreamTransformer>> l_streamTransformers;
-        if ((*it_route).contains("topicToPayload")) {
-          nlohmann::json l_topicToPayloads = (*it_route).at("topicToPayload");
+        if ((*it_route).contains(k_routeTopicToPayload)) {
+          nlohmann::json l_topicToPayloads =
+              (*it_route).at(k_routeTopicToPayload);
 
           for (auto jt = l_topicToPayloads.begin();
                jt != l_topicToPayloads.end(); ++jt) {
@@ -176,8 +174,8 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
             l_streamTransformers.push_back(l_streamTransformer);
           }
         }
-        if ((*it_route).contains("topicToTopic")) {
-          nlohmann::json l_topicToTopic = (*it_route).at("topicToTopic");
+        if ((*it_route).contains(k_routeTopicToTopic)) {
+          nlohmann::json l_topicToTopic = (*it_route).at(k_routeTopicToTopic);
 
           for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
                ++jt) {
@@ -187,8 +185,9 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
             l_streamTransformers.push_back(l_streamTransformer);
           }
         }
-        if ((*it_route).contains("payloadToPayload")) {
-          nlohmann::json l_topicToTopic = (*it_route).at("payloadToPayload");
+        if ((*it_route).contains(k_routePayloadToPayload)) {
+          nlohmann::json l_topicToTopic =
+              (*it_route).at(k_routePayloadToPayload);
 
           for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
                ++jt) {
@@ -198,8 +197,8 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
             l_streamTransformers.push_back(l_streamTransformer);
           }
         }
-        if ((*it_route).contains("payloadToTopic")) {
-          nlohmann::json l_topicToTopic = (*it_route).at("payloadToTopic");
+        if ((*it_route).contains(k_routePayloadToTopic)) {
+          nlohmann::json l_topicToTopic = (*it_route).at(k_routePayloadToTopic);
 
           for (auto jt = l_topicToTopic.begin(); jt != l_topicToTopic.end();
                ++jt) {

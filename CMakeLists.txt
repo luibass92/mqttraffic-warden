@@ -215,20 +215,20 @@ include_directories("${PROJECT_BINARY_DIR}")
 #
 # external include libraries
 #
-include_directories(${PROJECT_LIB_EXT}/jsonrpcpp/include)
-include_directories(${PROJECT_LIB_EXT}/stduuid/include)
-include_directories(${PAHO_MQTT_C_PATH}/include)
-include_directories(${PAHO_MQTT_CPP_PATH}/include)
+#include_directories(${PROJECT_LIB_EXT}/jsonrpcpp/include)
+#include_directories(${PROJECT_LIB_EXT}/stduuid/include)
+#include_directories(${PAHO_MQTT_C_PATH}/include)
+#include_directories(${PAHO_MQTT_CPP_PATH}/include)
 # tbb 
 include_directories(${TBB_PATH}/include)
 # json-schema-validator
 include_directories(${JSON_SCHEMA_VALIDATOR_PATH}/include)
 # spdlog
-include_directories(${SPDLOG_PATH}/include)
+#include_directories(${SPDLOG_PATH}/include)
 
 link_directories(${TBB_PATH}/lib/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE})
-link_directories(${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
-link_directories(${PAHO_MQTT_CPP_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
+#link_directories(${PAHO_MQTT_C_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
+#link_directories(${PAHO_MQTT_CPP_PATH}/${SHORTNAME_OS}/${SHORTNAME_BUILD_TYPE}/lib)
 
 #
 # main target

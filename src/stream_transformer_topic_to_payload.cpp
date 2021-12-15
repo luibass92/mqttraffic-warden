@@ -18,23 +18,23 @@ void StreamTransformerTopicToPayload::setup(const nlohmann::json& p_json) {
 
     // mandatory fields
     tw::TopicToPayloadTransformation_t l_transformation;
-    l_transformation.fromTopic = p_json["from"].get<int>();
-    l_transformation.toPayload = p_json["to"].get<std::string>();
+    l_transformation.fromTopic = p_json[k_from].get<int>();
+    l_transformation.toPayload = p_json[k_to].get<std::string>();
 
     // optional fields
-    if (p_json.contains("as")) {
-      std::string l_stringJsonType = p_json["as"].get<std::string>();
-      if ("number" == l_stringJsonType) {
+    if (p_json.contains(k_as)) {
+      std::string l_stringJsonType = p_json[k_as].get<std::string>();
+      if (k_typeNumber == l_stringJsonType) {
         l_transformation.asType = JsonType::Number;
-      } else if ("string" == l_stringJsonType) {
+      } else if (k_typeString == l_stringJsonType) {
         l_transformation.asType = JsonType::String;
-      } else if ("boolean" == l_stringJsonType) {
+      } else if (k_typeBoolean == l_stringJsonType) {
         l_transformation.asType = JsonType::Boolean;
       } else {
         spdlog::error(
             "{} '{}' key must have one of the "
-            "following values: '{}', '{}', '{}'",
-            get_class_name(), "as", "number", "string", "boolean");
+            "following values: {}",
+            get_class_name(), k_as, fmt::join(k_types, ", "));
         throw StreamTransformerSetupException();
       }
     } else {
@@ -99,9 +99,8 @@ void StreamTransformerTopicToPayload::execute(const std::string& p_inputTopic,
         }
         break;
       default:
-        spdlog::error(
-            "{} '{}' value must be one of the following: '{}', '{}', '{}'",
-            get_class_name(), "as", "number", "string", "boolean");
+        spdlog::error("{} '{}' value must be one of the following: {}",
+                      get_class_name(), k_as, fmt::join(k_types, ", "));
         throw StreamTransformerExecutionException();
         break;
     }
@@ -113,20 +112,20 @@ bool StreamTransformerTopicToPayload::is_valid_setup(
   if (!p_json.is_object()) {
     spdlog::error("{} is not a JSON object", get_class_name());
     return false;
-  } else if (!p_json.contains("from")) {
-    spdlog::error("{} must contain a '{}' key", get_class_name(), "from");
+  } else if (!p_json.contains(k_from)) {
+    spdlog::error("{} must contain a '{}' key", get_class_name(), k_from);
     return false;
-  } else if (!p_json["from"].is_number_unsigned()) {
-    spdlog::error("{} '{}' value must be a number", get_class_name(), "from");
+  } else if (!p_json[k_from].is_number_unsigned()) {
+    spdlog::error("{} '{}' value must be a number", get_class_name(), k_from);
     return false;
-  } else if (!p_json.contains("to")) {
-    spdlog::error("{} must contain a '{}' key", get_class_name(), "to");
+  } else if (!p_json.contains(k_to)) {
+    spdlog::error("{} must contain a '{}' key", get_class_name(), k_to);
     return false;
-  } else if (!p_json["to"].is_string()) {
-    spdlog::error("{} '{}' value must be a string", get_class_name(), "to");
+  } else if (!p_json[k_to].is_string()) {
+    spdlog::error("{} '{}' value must be a string", get_class_name(), k_to);
     return false;
-  } else if (p_json.contains("as") && !p_json["as"].is_string()) {
-    spdlog::error("{} '{}' value must be a string", get_class_name(), "as");
+  } else if (p_json.contains(k_as) && !p_json[k_as].is_string()) {
+    spdlog::error("{} '{}' value must be a string", get_class_name(), k_as);
     return false;
   }
 
