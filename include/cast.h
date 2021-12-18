@@ -25,6 +25,10 @@ std::string lexical_cast(const char* str);
 template <>
 float lexical_cast(const char* str);
 template <>
+double lexical_cast(const char* str);
+template <>
+long double lexical_cast(const char* str);
+template <>
 long lexical_cast(const char* str);
 template <>
 long long lexical_cast(const char* str);

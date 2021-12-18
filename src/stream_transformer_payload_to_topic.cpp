@@ -4,6 +4,7 @@
 
 #include "cast.h"
 #include "exceptions.h"
+#include "json_utilities.h"
 #include "spdlog/spdlog.h"
 #include "utilities.h"
 
@@ -32,21 +33,34 @@ void StreamTransformerPayloadToTopic::execute(
     std::string& p_outputTopic, nlohmann::json& p_outputPayload) {
   std::vector<std::string> l_outputTopicSplitted =
       utilities::splitString(p_outputTopic, "/");
-  if (l_outputTopicSplitted.size() <= m_transformation.toTopic) {
+
+  std::string l_inputPayloadStr = "";
+  if (!p_inputPayload.contains(m_transformation.fromPayload)) {
+    spdlog::error("Key '{}' not found in input payload '{}'",
+                  m_transformation.fromPayload,
+                  utilities::dump_json(p_inputPayload));
+    throw StreamTransformerExecutionException();
+  } else if (!utilities::json_to_string(
+                 p_inputPayload.at(m_transformation.fromPayload),
+                 l_inputPayloadStr)) {
+    spdlog::error("JSON to string conversion failed");
+    throw StreamTransformerExecutionException();
+  } else if (l_outputTopicSplitted.size() <= m_transformation.toTopic) {
     spdlog::warn(
-        "The output sub-topic at index '{}' does not exists. Payload "
-        "will be appended at the end of the output topic '{}'",
-        m_transformation.toTopic, p_outputTopic);
-    p_outputTopic.append(
-        "/" + std::string(p_inputPayload.at(m_transformation.fromPayload)));
+        "The output topic '{}' does not have index '{}'. Payload '{}'"
+        "will be appended at the end.",
+        p_outputTopic, l_inputPayloadStr, m_transformation.toTopic);
+    p_outputTopic.append("/" + l_inputPayloadStr);
+
   } else {
     l_outputTopicSplitted.insert(
         l_outputTopicSplitted.begin() + m_transformation.toTopic,
-        std::string(p_inputPayload.at(m_transformation.fromPayload)));
+        l_inputPayloadStr);
     p_outputTopic = utilities::joinStrings(l_outputTopicSplitted, "/");
   }
   // If 'keep' is false, the original payload key-value pair must be deleted
-  if (!m_transformation.keep) {
+  if (!m_transformation.keep &&
+      p_outputPayload.contains(m_transformation.fromPayload)) {
     p_outputPayload.erase(m_transformation.fromPayload);
   }
 }

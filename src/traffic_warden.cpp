@@ -182,6 +182,22 @@ void TrafficWarden::configure_mqtt_client(
   }
 }
 
+bool TrafficWarden::is_valid_topic(const std::string& p_topic) {
+  if (p_topic.empty()) {
+    spdlog::error("MQTT topic must contain at least one character");
+    return false;
+  } else if (p_topic != "/" &&
+             (p_topic.front() == '/' || p_topic.back() == '/')) {
+    spdlog::error(
+        "MQTT topic '{}' should not start or terminate with '/' (character '/' "
+        "alone is allowed though)",
+        p_topic);
+    return false;
+  }
+
+  return true;
+}
+
 bool TrafficWarden::is_valid_route(const nlohmann::json& p_route) {
   if (!p_route.contains(k_routeName)) {
     spdlog::error("Key '{}' is mandatory", k_routeName);
@@ -195,11 +211,19 @@ bool TrafficWarden::is_valid_route(const nlohmann::json& p_route) {
   } else if (!p_route.at(k_routeInputTopic).is_string()) {
     spdlog::error("Key '{}' must be a string", k_routeInputTopic);
     return false;
+  } else if (!is_valid_topic(
+                 p_route.at(k_routeInputTopic).get<std::string>())) {
+    spdlog::error("Topic validation failed");
+    return false;
   } else if (!p_route.contains(k_routeOutputTopic)) {
     spdlog::error("Key '{}' is mandatory", k_routeOutputTopic);
     return false;
   } else if (!p_route.at(k_routeOutputTopic).is_string()) {
     spdlog::error("Key '{}' must be a string", k_routeOutputTopic);
+    return false;
+  } else if (!is_valid_topic(
+                 p_route.at(k_routeOutputTopic).get<std::string>())) {
+    spdlog::error("Topic validation failed");
     return false;
   }
 
@@ -289,8 +313,13 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
                           fmt::join(k_streamTransformerTypes, ", "));
             throw TrafficWardenInitializationException();
           }
-          l_streamTransformer->setup((*it_streamTransformer));
-          l_routeProperties.streamTransformers.push_back(l_streamTransformer);
+          try {
+            l_streamTransformer->setup((*it_streamTransformer));
+            l_routeProperties.streamTransformers.push_back(l_streamTransformer);
+          } catch (StreamTransformerSetupException& stse) {
+            spdlog::error("{}", stse.what());
+            throw TrafficWardenInitializationException();
+          }
         }
       }
 
@@ -383,8 +412,12 @@ void TrafficWarden::transform() {
             std::get<static_cast<int>(TransformQueueEnum::OutputPayload)>(
                 l_dataToTransform);
         for (auto it_streamTransformer : l_streamTransformers) {
-          it_streamTransformer->execute(l_inputTopic, l_inputPayload,
-                                        l_outputTopic, l_outputPayload);
+          try {
+            it_streamTransformer->execute(l_inputTopic, l_inputPayload,
+                                          l_outputTopic, l_outputPayload);
+          } catch (StreamTransformerExecutionException& stee) {
+            spdlog::error("{}", stee.what());
+          }
         }
         m_outgoingQueue.push(std::make_pair(l_outputTopic, l_outputPayload));
       }

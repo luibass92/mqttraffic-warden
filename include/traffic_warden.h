@@ -90,6 +90,7 @@ class TrafficWarden {
       const BrokerConfiguration_t& p_brokerConfiguration);
 
   RouteConfigurations_t retrieve_routes(const nlohmann::json& p_routes);
+  bool is_valid_topic(const std::string& p_topic);
   bool is_valid_route(const nlohmann::json& p_route);
   bool is_valid_stream_transformer(const nlohmann::json& p_streamTransformer);
 

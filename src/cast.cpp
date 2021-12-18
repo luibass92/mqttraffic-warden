@@ -14,6 +14,14 @@ float lexical_cast(const char* str) {
   return std::strtof(str, nullptr);
 }
 template <>
+double lexical_cast(const char* str) {
+  return std::strtod(str, nullptr);
+}
+template <>
+long double lexical_cast(const char* str) {
+  return std::strtold(str, nullptr);
+}
+template <>
 long lexical_cast(const char* str) {
   return std::strtol(str, nullptr, 0);
 }

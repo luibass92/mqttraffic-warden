@@ -10,62 +10,75 @@
 	"privateKey": "",
 	"routes": [
 		{
-			"name": "21st Street",
-			"inputTopic": "foo1/1",
-			"outputTopic": "bar1/foo1",
+			"name": "Route 1",
+			"inputTopic": "food/fat/pizza",
+			"outputTopic": "food/good",
 			"streamTransformers": [
 				{
 					"type": "topicToPayload",
-					"from": 1,
-					"to": "producer",
-					"as": "number"
+					"from": 2,
+					"to": "likedFood",
+					"as": "string"
 				},
 				{
 					"type": "payloadToPayload",
-					"from": "temp",
-					"to": "input_temp",
-					"as": "number",
+					"from": "fruit",
+					"to": "without",
+					"as": "string",
 					"keep": true
 				},
 				{
 					"type": "payloadToTopic",
-					"from": "temp",
-					"to": 1,
+					"from": "seasoning",
+					"to": 2,
 					"keep": true
 				},
 				{
+					"type": "payloadToTopic",
+					"from": "quantity",
+					"to": 2,
+					"keep": false
+				},
+				{
 					"type": "topicToTopic",
-					"from": 1,
+					"from": 2,
 					"to": 2
 				}
 			]
 		},
 		{
-			"name": "New Avenue",
-			"inputTopic": "foo2/bar2",
-			"outputTopic": "bar2/foo2",
+			"name": "Route 2",
+			"inputTopic": "food/fat/pizza",
+			"outputTopic": "food/good/lovely/pizza"
+		},
+		{
+			"name": "Route 3",
+			"inputTopic": "food/bad/vegetables",
+			"outputTopic": "food",
 			"streamTransformers": [
-				{
-					"type": "topicToPayload",
-					"from": 2,
-					"to": "producer_subset",
-					"as": "string"
-				},
-				{
-					"type": "payloadToPayload",
-					"from": "voltage",
-					"to": "input_voltage",
-					"as": "number"
-				},
-				{
-					"type": "payloadToTopic",
-					"from": "voltage",
-					"to": 2
-				},
 				{
 					"type": "topicToTopic",
 					"from": 1,
-					"to": 2
+					"to": 1
+				},
+				{
+					"type": "payloadToTopic",
+					"from": "putMeIn",
+					"to" : 2,
+					"keep": false
+				}
+			]
+		},
+		{
+			"name": "Route 4",
+			"inputTopic": "food/1",
+			"outputTopic": "food",
+			"streamTransformers": [
+				{
+					"type": "topicToPayload",
+					"from": 1,
+					"to": "quantity",
+					"as": "number"
 				}
 			]
 		}
