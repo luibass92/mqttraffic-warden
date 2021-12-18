@@ -24,9 +24,28 @@ typedef struct {
 } BrokerConfiguration_t;
 
 /* < name, <inputTopic, outputTopic, <listOfStransformers>>> */
-typedef std::unordered_map<
-    std::string, std::tuple<std::string, std::string,
-                            std::list<std::shared_ptr<StreamTransformer>>>>
+// typedef std::unordered_map<
+//     std::string, std::tuple<std::string, std::string,
+//                             std::list<std::shared_ptr<StreamTransformer>>>>
+//     RouteConfigurations_t;
+
+typedef struct {
+  std::string name;
+  std::string outputTopic;
+  std::list<std::shared_ptr<StreamTransformer>> streamTransformers;
+} RouteProperties_t;
+/*
+ *   < inputTopic1, [
+ *                  (name1, outputTopic1, [ST11, ST12, ...]),
+ *                  (name, 2outputTopic2, [ST21, ST22, ...])
+ *                 ],
+ *     inputTopic2, [
+ *                  (name3, outputTopic3, [ ]),
+ *                  (name4, outputTopic4, [ST41])
+ *                 ]
+ *    >
+ */
+typedef std::unordered_map<std::string, std::list<RouteProperties_t>>
     RouteConfigurations_t;
 
 class TrafficWarden {
@@ -71,19 +90,30 @@ class TrafficWarden {
       const BrokerConfiguration_t& p_brokerConfiguration);
 
   RouteConfigurations_t retrieve_routes(const nlohmann::json& p_routes);
+  bool is_valid_route(const nlohmann::json& p_route);
+  bool is_valid_stream_transformer(const nlohmann::json& p_streamTransformer);
 
+  void ingest();
   void transform();
   void publish();
 
   RouteConfigurations_t m_routes;
   std::shared_ptr<MqttClient> m_mqttClient;
 
-  std::unordered_map<std::string, std::string> m_topicToRoute;
-  tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>
-      m_streamTransformerQueue;
-  tbb::concurrent_queue<std::pair<std::string, nlohmann::json>>
-      m_publisherQueue;
-  std::thread m_streamTransformerDataProducer;
+  tbb::concurrent_queue<std::pair<std::string, nlohmann::json>> m_incomingQueue;
+  tbb::concurrent_queue<std::pair<std::string, nlohmann::json>> m_outgoingQueue;
+  tbb::concurrent_queue<
+      std::tuple<std::list<std::shared_ptr<StreamTransformer>>, std::string,
+                 nlohmann::json, std::string, nlohmann::json>>
+      m_transformQueue;
+
+  enum class TransformQueueEnum {
+    StreamTransformerList = 0,
+    InputTopic = 1,
+    InputPayload = 2,
+    OutputTopic = 3,
+    OutputPayload = 4
+  };
 };
 
 }  // namespace tw

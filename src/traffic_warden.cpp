@@ -27,17 +27,18 @@ void TrafficWarden::init(const nlohmann::json& p_configurations) {
   if (!m_routes.empty()) {
     std::list<std::string> l_inputTopics;
     for (auto it_route : m_routes) {
-      l_inputTopics.push_back(std::get<0>(it_route.second));
-      m_topicToRoute.insert({std::get<0>(it_route.second), it_route.first});
+      l_inputTopics.push_back(it_route.first);
     }
-    std::thread t1(&TrafficWarden::transform, this);
-    std::thread t2(&TrafficWarden::publish, this);
+    std::thread t1(&TrafficWarden::ingest, this);
+    std::thread t2(&TrafficWarden::transform, this);
+    std::thread t3(&TrafficWarden::publish, this);
 
-    m_mqttClient->initCallback(l_inputTopics, &m_streamTransformerQueue);
+    m_mqttClient->initCallback(l_inputTopics, &m_incomingQueue);
     m_mqttClient->connect();
 
     if (t1.joinable()) t1.join();
     if (t2.joinable()) t2.join();
+    if (t3.joinable()) t3.join();
   } else {
     spdlog::warn("No routes have been defined, exiting.");
   }
@@ -181,9 +182,49 @@ void TrafficWarden::configure_mqtt_client(
   }
 }
 
+bool TrafficWarden::is_valid_route(const nlohmann::json& p_route) {
+  if (!p_route.contains(k_routeName)) {
+    spdlog::error("Key '{}' is mandatory", k_routeName);
+    return false;
+  } else if (!p_route.at(k_routeName).is_string()) {
+    spdlog::error("Key '{}' must be a string", k_routeName);
+    return false;
+  } else if (!p_route.contains(k_routeInputTopic)) {
+    spdlog::error("Key '{}' is mandatory", k_routeInputTopic);
+    return false;
+  } else if (!p_route.at(k_routeInputTopic).is_string()) {
+    spdlog::error("Key '{}' must be a string", k_routeInputTopic);
+    return false;
+  } else if (!p_route.contains(k_routeOutputTopic)) {
+    spdlog::error("Key '{}' is mandatory", k_routeOutputTopic);
+    return false;
+  } else if (!p_route.at(k_routeOutputTopic).is_string()) {
+    spdlog::error("Key '{}' must be a string", k_routeOutputTopic);
+    return false;
+  }
+
+  return true;
+}
+
+bool TrafficWarden::is_valid_stream_transformer(
+    const nlohmann::json& p_streamTransformer) {
+  if (!p_streamTransformer.contains(k_transformerType)) {
+    spdlog::error(
+        "Found a stream transformer without mandatory '{}' "
+        "attribute.",
+        k_transformerType);
+    return false;
+  } else if (!p_streamTransformer.at(k_transformerType).is_string()) {
+    spdlog::error("Stream transformer '{}' attribute must be a string");
+    return false;
+  }
+
+  return true;
+}
+
 RouteConfigurations_t TrafficWarden::retrieve_routes(
     const nlohmann::json& p_routes) {
-  RouteConfigurations_t l_result;
+  RouteConfigurations_t l_routeConfigurations;
 
   if (!p_routes.is_array()) {
     spdlog::error("Routes must be a JSON array");
@@ -193,111 +234,171 @@ RouteConfigurations_t TrafficWarden::retrieve_routes(
   } else {
     for (auto it_route = p_routes.begin(); it_route != p_routes.end();
          ++it_route) {
-      if (l_result.find((*it_route).at(k_routeName)) != l_result.end()) {
-        spdlog::warn("Route with name {} already present, ignoring it.",
-                     (*it_route).at(k_routeName));
+      // validate route
+      if (!is_valid_route(*it_route)) {
+        spdlog::error("Route validation failed");
+        throw TrafficWardenInitializationException();
+      }
+
+      RouteProperties_t l_routeProperties;
+      l_routeProperties.name = it_route->at(k_routeName);
+      l_routeProperties.outputTopic = it_route->at(k_routeOutputTopic);
+
+      std::string l_inputTopic = it_route->at(k_routeInputTopic);
+
+      // retrieve stream transformers if present
+      if (!it_route->contains(k_streamTransformers)) {
+        spdlog::info("No stream transformer configured for route {}",
+                     l_routeProperties.name);
+      } else if (!it_route->at(k_streamTransformers).is_array()) {
+        spdlog::error("Key '{}' must be an array", k_streamTransformers);
+        throw TrafficWardenInitializationException();
       } else {
-        std::string l_name = (*it_route).at(k_routeName);
-        std::string l_inputTopic = (*it_route).at(k_routeInputTopic);
-        std::string l_outputTopic = (*it_route).at(k_routeOutputTopic);
-        if (!(*it_route).contains(k_streamTransformers)) {
-          spdlog::info("No stream transformer configured for route {}", l_name);
-        } else if (!(*it_route).at(k_streamTransformers).is_array()) {
-          spdlog::error("streamTransformers field must be an array");
-        } else {
-          std::list<std::shared_ptr<StreamTransformer>> l_streamTransformerList;
-          nlohmann::json l_streamTransformers =
-              (*it_route).at(k_streamTransformers);
-          for (auto it_streamTransformer = l_streamTransformers.begin();
-               it_streamTransformer != l_streamTransformers.end();
-               ++it_streamTransformer) {
-            if (!it_streamTransformer->contains(k_transformerType)) {
-              spdlog::error(
-                  "Found a stream transformer without mandatory '{}' "
-                  "attribute, ignoring it.",
-                  k_transformerType);
-            } else if (!(*it_streamTransformer)
-                            .at(k_transformerType)
-                            .is_string()) {
-              spdlog::error(
-                  "Stream transformer '{}' attribute must be a string");
-            } else if (std::none_of(
-                           k_streamTransformerTypes.begin(),
-                           k_streamTransformerTypes.end(),
-                           [&it_streamTransformer](std::string it_transformer) {
-                             return it_transformer ==
-                                    (*it_streamTransformer)
-                                        .at(k_transformerType);
-                           })) {
-              spdlog::error("'{}' must have one of the following values: {}",
-                            k_transformerType,
-                            fmt::join(k_streamTransformerTypes, ", "));
-            } else {
-              std::shared_ptr<StreamTransformer> l_streamTransformer;
-              if (k_topicToPayload ==
-                  (*it_streamTransformer).at(k_transformerType)) {
-                l_streamTransformer =
-                    std::make_shared<StreamTransformerTopicToPayload>();
-              }
-              if (k_topicToTopic ==
-                  (*it_streamTransformer).at(k_transformerType)) {
-                l_streamTransformer =
-                    std::make_shared<StreamTransformerTopicToTopic>();
-              }
-              if (k_payloadToTopic ==
-                  (*it_streamTransformer).at(k_transformerType)) {
-                l_streamTransformer =
-                    std::make_shared<StreamTransformerPayloadToTopic>();
-              }
-              if (k_payloadToPayload ==
-                  (*it_streamTransformer).at(k_transformerType)) {
-                l_streamTransformer =
-                    std::make_shared<StreamTransformerPayloadToPayload>();
-              }
-              l_streamTransformer->setup((*it_streamTransformer));
-              l_streamTransformerList.push_back(l_streamTransformer);
-            }
+        // stream transformers are present
+        nlohmann::json l_streamTransformers =
+            it_route->at(k_streamTransformers);
+        for (auto it_streamTransformer = l_streamTransformers.begin();
+             it_streamTransformer != l_streamTransformers.end();
+             ++it_streamTransformer) {
+          // validate stream transformer
+          if (!is_valid_stream_transformer(*it_streamTransformer)) {
+            spdlog::error("Stream Transformer validation failed");
+            throw TrafficWardenInitializationException();
           }
 
-          l_result.insert({l_name, std::make_tuple(l_inputTopic, l_outputTopic,
-                                                   l_streamTransformerList)});
+          // retrieve stream transformer
+          std::shared_ptr<StreamTransformer> l_streamTransformer;
+          if (k_topicToPayload == it_streamTransformer->at(k_transformerType)) {
+            l_streamTransformer =
+                std::make_shared<StreamTransformerTopicToPayload>();
+          } else if (k_topicToTopic ==
+                     it_streamTransformer->at(k_transformerType)) {
+            l_streamTransformer =
+                std::make_shared<StreamTransformerTopicToTopic>();
+          } else if (k_payloadToTopic ==
+                     it_streamTransformer->at(k_transformerType)) {
+            l_streamTransformer =
+                std::make_shared<StreamTransformerPayloadToTopic>();
+          } else if (k_payloadToPayload ==
+                     it_streamTransformer->at(k_transformerType)) {
+            l_streamTransformer =
+                std::make_shared<StreamTransformerPayloadToPayload>();
+          } else {
+            spdlog::error("'{}' must have one of the following values: {}",
+                          k_transformerType,
+                          fmt::join(k_streamTransformerTypes, ", "));
+            throw TrafficWardenInitializationException();
+          }
+          l_streamTransformer->setup((*it_streamTransformer));
+          l_routeProperties.streamTransformers.push_back(l_streamTransformer);
         }
+      }
+
+      if (l_routeConfigurations.find(l_inputTopic) !=
+          l_routeConfigurations.end()) {
+        l_routeConfigurations.at(l_inputTopic).push_back(l_routeProperties);
+      } else {
+        l_routeConfigurations.insert(
+            {l_inputTopic, std::list<RouteProperties_t>{l_routeProperties}});
       }
     }
   }
 
-  return l_result;
+  return l_routeConfigurations;
+}
+
+void TrafficWarden::ingest() {
+  while (true) {
+    while (!m_incomingQueue.empty()) {
+      std::pair<std::string, nlohmann::json> l_message;
+      if (m_incomingQueue.try_pop(l_message)) {
+        const std::string l_inputTopic = l_message.first;
+        const nlohmann::json l_inputPayload = l_message.second;
+        nlohmann::json l_outputPayload = l_inputPayload;
+        auto l_route = m_routes.find(l_inputTopic);
+        if (l_route == m_routes.end()) {
+          spdlog::warn(
+              "Incoming message for topic '{}' does not have any associated "
+              "routing, ignoring it",
+              l_inputTopic);
+          continue;
+        }
+
+        const std::list<RouteProperties_t> l_routeProperties = l_route->second;
+        if (l_routeProperties.empty()) {
+          spdlog::warn(
+              "Incoming message for topic '{}' has associated an empty list "
+              "of routing configurations, ignoring it",
+              l_inputTopic);
+          continue;
+        }
+
+        for (auto it_routeProperty : l_routeProperties) {
+          std::string l_outputTopic = it_routeProperty.outputTopic;
+          std::list<std::shared_ptr<StreamTransformer>> l_streamTransformers =
+              it_routeProperty.streamTransformers;
+          if (!l_streamTransformers.empty()) {
+            // pass stream transformers data to transformer thread
+            m_transformQueue.push(std::make_tuple(
+                l_streamTransformers, l_inputTopic, l_inputPayload,
+                l_outputTopic, l_outputPayload));
+          } else {
+            // pass output topic and payload to publisher thread
+            m_outgoingQueue.push(
+                std::make_pair(l_outputTopic, l_outputPayload));
+          }
+        }
+      }
+    }
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 }
 
 void TrafficWarden::transform() {
   while (true) {
-    while (!m_streamTransformerQueue.empty()) {
+    while (!m_transformQueue.empty()) {
       std::pair<std::string, nlohmann::json> l_message;
-      if (m_streamTransformerQueue.try_pop(l_message)) {
-        nlohmann::json l_inputPayload = l_message.second;
-        if (m_topicToRoute.find(l_message.first) != m_topicToRoute.end()) {
-          std::string l_route = m_topicToRoute.at(l_message.first);
-          auto [l_inputTopic, l_outputTopic, l_streamTransformers] =
-              m_routes.at(l_route);
-          // output payload should be equal to input payload at beginning
-          nlohmann::json l_outputPayload = l_inputPayload;
-          for (auto l_streamTransformer : l_streamTransformers) {
-            l_streamTransformer->execute(l_inputTopic, l_inputPayload,
-                                         l_outputTopic, l_outputPayload);
-          }
-          m_publisherQueue.push(std::make_pair(l_outputTopic, l_outputPayload));
+      std::tuple<std::list<std::shared_ptr<StreamTransformer>>, std::string,
+                 nlohmann::json, std::string, nlohmann::json>
+          l_dataToTransform;
+      if (m_transformQueue.try_pop(l_dataToTransform)) {
+        // execute stream transformers if present
+        std::list<std::shared_ptr<StreamTransformer>> l_streamTransformers =
+            std::get<static_cast<int>(
+                TransformQueueEnum::StreamTransformerList)>(l_dataToTransform);
+        if (l_streamTransformers.empty()) {
+          continue;
         }
+
+        std::string l_inputTopic =
+            std::get<static_cast<int>(TransformQueueEnum::InputTopic)>(
+                l_dataToTransform);
+        nlohmann::json l_inputPayload =
+            std::get<static_cast<int>(TransformQueueEnum::InputPayload)>(
+                l_dataToTransform);
+        std::string l_outputTopic =
+            std::get<static_cast<int>(TransformQueueEnum::OutputTopic)>(
+                l_dataToTransform);
+        nlohmann::json l_outputPayload =
+            std::get<static_cast<int>(TransformQueueEnum::OutputPayload)>(
+                l_dataToTransform);
+        for (auto it_streamTransformer : l_streamTransformers) {
+          it_streamTransformer->execute(l_inputTopic, l_inputPayload,
+                                        l_outputTopic, l_outputPayload);
+        }
+        m_outgoingQueue.push(std::make_pair(l_outputTopic, l_outputPayload));
       }
     }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 }
 
 void TrafficWarden::publish() {
   while (true) {
-    while (!m_publisherQueue.empty()) {
+    while (!m_outgoingQueue.empty()) {
       std::pair<std::string, nlohmann::json> l_message;
-      if (m_publisherQueue.try_pop(l_message)) {
+      if (m_outgoingQueue.try_pop(l_message)) {
         m_mqttClient->publish(l_message.first, l_message.second.dump(),
                               k_defaultQos, false);
       }
