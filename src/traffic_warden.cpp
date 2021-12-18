@@ -15,21 +15,12 @@ TrafficWarden::TrafficWarden() {}
 TrafficWarden::~TrafficWarden(){};
 
 void TrafficWarden::init(const nlohmann::json& p_configurations) {
-  auto [l_host, l_user, l_password, l_clientId, l_keepAliveInterval,
-        l_trustStore, l_keyStore, l_privateKey] =
+  // get broker configuration from configuration JSON file
+  BrokerConfiguration_t l_brokerConfiguration =
       retrieve_broker_infos(p_configurations);
 
-  if (l_trustStore.has_value() && l_keyStore.has_value() &&
-      l_privateKey.has_value()) {
-    // with ssl
-    m_mqttClient = std::make_shared<MqttClient>(
-        l_host, l_clientId, l_user, l_password, l_keepAliveInterval,
-        l_trustStore.value(), l_keyStore.value(), l_privateKey.value());
-  } else {
-    // without ssl
-    m_mqttClient = std::make_shared<MqttClient>(
-        l_host, l_clientId, l_user, l_password, l_keepAliveInterval);
-  }
+  // use the retrieved configuration to set up the MQTT client
+  configure_mqtt_client(l_brokerConfiguration);
 
   m_routes = retrieve_routes(p_configurations.at(k_routes));
 
@@ -52,26 +43,26 @@ void TrafficWarden::init(const nlohmann::json& p_configurations) {
   }
 }
 
-BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
+BrokerConfiguration_t TrafficWarden::retrieve_broker_infos(
     const nlohmann::json& p_configurations) {
+  BrokerConfiguration_t l_brokerConfigurations;
   // mandatory fields
-  std::string l_brokerAddress = "";
   if (!p_configurations.contains(k_brokerAddress)) {
     spdlog::error("The key '{}' is mandatory", k_brokerAddress);
     throw TrafficWardenInitializationException();
   } else if (!p_configurations.at(k_brokerAddress).is_string()) {
     spdlog::error("The key '{}' must be a string", k_brokerAddress);
     throw TrafficWardenInitializationException();
+  } else if (!utilities::isValidIp(
+                 p_configurations.at(k_brokerAddress).get<std::string>())) {
+    spdlog::error("Broker IP address '{}' must be a valid IPv4 or IPv6",
+                  p_configurations.at(k_brokerAddress).get<std::string>());
+    throw TrafficWardenInitializationException();
   } else {
-    l_brokerAddress = p_configurations.at(k_brokerAddress).get<std::string>();
-    if (!utilities::isValidIp(l_brokerAddress)) {
-      spdlog::error("Broker IP address '{}' must be a valid IPv4 or IPv6",
-                    l_brokerAddress);
-      throw TrafficWardenInitializationException();
-    }
+    l_brokerConfigurations.host =
+        p_configurations.at(k_brokerAddress).get<std::string>();
   }
 
-  std::string l_brokerUser = "";
   if (!p_configurations.contains(k_brokerUser)) {
     spdlog::error("The key '{}' is mandatory", k_brokerUser);
     throw TrafficWardenInitializationException();
@@ -79,10 +70,10 @@ BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
     spdlog::error("The key '{}' must be a string", k_brokerUser);
     throw TrafficWardenInitializationException();
   } else {
-    l_brokerUser = p_configurations.at(k_brokerUser).get<std::string>();
+    l_brokerConfigurations.user =
+        p_configurations.at(k_brokerUser).get<std::string>();
   }
 
-  std::string l_brokerPassword = "";
   if (!p_configurations.contains(k_brokerPassword)) {
     spdlog::error("The key '{}' is mandatory", k_brokerPassword);
     throw TrafficWardenInitializationException();
@@ -90,28 +81,50 @@ BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
     spdlog::error("The key '{}' must be a string", k_brokerPassword);
     throw TrafficWardenInitializationException();
   } else {
-    l_brokerPassword = p_configurations.at(k_brokerPassword).get<std::string>();
+    l_brokerConfigurations.password =
+        p_configurations.at(k_brokerPassword).get<std::string>();
   }
 
-  std::string l_clientId = k_defaultClientId;
-  if (p_configurations.contains(k_clientId))
-    l_clientId = p_configurations.at(k_clientId).get<std::string>();
+  if (p_configurations.contains(k_clientId) &&
+      !p_configurations.at(k_clientId).is_string()) {
+    spdlog::error("The key '{}' must be a string", k_clientId);
+    throw TrafficWardenInitializationException();
+  } else if (p_configurations.contains(k_clientId)) {
+    l_brokerConfigurations.clientId =
+        p_configurations.at(k_clientId).get<std::string>();
+  } else {
+    l_brokerConfigurations.clientId = k_defaultClientId;
+  }
 
-  int l_keepAliveInterval = k_defaultKeepAliveInterval;
-  if (p_configurations.contains(k_keepAliveInterval))
-    l_keepAliveInterval = p_configurations.at(k_keepAliveInterval).get<int>();
+  if (p_configurations.contains(k_keepAliveInterval) &&
+      !p_configurations.at(k_keepAliveInterval).is_number_unsigned()) {
+    spdlog::error("The key '{}' must be an unsigned number",
+                  k_keepAliveInterval);
+    throw TrafficWardenInitializationException();
+  } else if (p_configurations.contains(k_keepAliveInterval)) {
+    l_brokerConfigurations.keepAliveInterval =
+        p_configurations.at(k_keepAliveInterval).get<int>();
+  } else {
+    l_brokerConfigurations.keepAliveInterval = k_defaultKeepAliveInterval;
+  }
 
-  // optional fields
-  std::optional<std::string> l_trustStore = std::nullopt;
-  std::optional<std::string> l_keyStore = std::nullopt;
-  std::optional<std::string> l_privateKey = std::nullopt;
+  bool l_ssl = false;
   if (!p_configurations.contains(k_ssl)) {
     spdlog::error("The key '{}' is mandatory", k_ssl);
     throw TrafficWardenInitializationException();
   } else if (!p_configurations.at(k_ssl).is_boolean()) {
     spdlog::error("The key '{}' must be a boolean", k_ssl);
     throw TrafficWardenInitializationException();
-  } else if (true == p_configurations.at(k_ssl).get<bool>()) {
+  } else {
+    l_ssl = p_configurations.at(k_ssl).get<bool>();
+  }
+
+  // in case ssl is true, trustStore, keyStore and privateKey must be set
+  // otherwise they are set to std::nullopt
+  l_brokerConfigurations.trustStore = std::nullopt;
+  l_brokerConfigurations.keyStore = std::nullopt;
+  l_brokerConfigurations.privateKey = std::nullopt;
+  if (l_ssl) {
     if (!p_configurations.contains(k_trustStore)) {
       spdlog::error("Since '{}' is set to '{}', the field '{}' is mandatory",
                     k_ssl, p_configurations.at(k_ssl), k_trustStore);
@@ -134,14 +147,38 @@ BrokerConfigurations_t TrafficWarden::retrieve_broker_infos(
       spdlog::error("The key '{}' must be a string", k_privateKey);
       throw TrafficWardenInitializationException();
     } else {
-      l_trustStore = p_configurations.at(k_trustStore).get<std::string>();
-      l_keyStore = p_configurations.at(k_keyStore).get<std::string>();
-      l_privateKey = p_configurations.at(k_privateKey).get<std::string>();
+      l_brokerConfigurations.trustStore =
+          p_configurations.at(k_trustStore).get<std::string>();
+      l_brokerConfigurations.keyStore =
+          p_configurations.at(k_keyStore).get<std::string>();
+      l_brokerConfigurations.privateKey =
+          p_configurations.at(k_privateKey).get<std::string>();
     }
   }
 
-  return std::tie(l_brokerAddress, l_brokerUser, l_brokerPassword, l_clientId,
-                  l_keepAliveInterval, l_trustStore, l_keyStore, l_privateKey);
+  return l_brokerConfigurations;
+}
+
+void TrafficWarden::configure_mqtt_client(
+    const BrokerConfiguration_t& p_brokerConfiguration) {
+  if (p_brokerConfiguration.trustStore.has_value() &&
+      p_brokerConfiguration.keyStore.has_value() &&
+      p_brokerConfiguration.privateKey.has_value()) {
+    // with ssl
+    m_mqttClient = std::make_shared<MqttClient>(
+        p_brokerConfiguration.host, p_brokerConfiguration.clientId,
+        p_brokerConfiguration.user, p_brokerConfiguration.password,
+        p_brokerConfiguration.keepAliveInterval,
+        p_brokerConfiguration.trustStore.value(),
+        p_brokerConfiguration.keyStore.value(),
+        p_brokerConfiguration.privateKey.value());
+  } else {
+    // without ssl
+    m_mqttClient = std::make_shared<MqttClient>(
+        p_brokerConfiguration.host, p_brokerConfiguration.clientId,
+        p_brokerConfiguration.user, p_brokerConfiguration.password,
+        p_brokerConfiguration.keepAliveInterval);
+  }
 }
 
 RouteConfigurations_t TrafficWarden::retrieve_routes(

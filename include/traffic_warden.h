@@ -12,10 +12,16 @@ namespace tw {
 class MqttClient;
 class StreamTransformer;
 
-typedef std::tuple<std::string, std::string, std::string, std::string, int,
-                   std::optional<std::string>, std::optional<std::string>,
-                   std::optional<std::string>>
-    BrokerConfigurations_t;
+typedef struct {
+  std::string host;
+  std::string user;
+  std::string password;
+  std::string clientId;
+  int keepAliveInterval;
+  std::optional<std::string> trustStore;
+  std::optional<std::string> keyStore;
+  std::optional<std::string> privateKey;
+} BrokerConfiguration_t;
 
 /* < name, <inputTopic, outputTopic, <listOfStransformers>>> */
 typedef std::unordered_map<
@@ -59,8 +65,10 @@ class TrafficWarden {
   inline static int const k_defaultKeepAliveInterval = 60;
   inline static int const k_defaultQos = 2;
 
-  BrokerConfigurations_t retrieve_broker_infos(
+  BrokerConfiguration_t retrieve_broker_infos(
       const nlohmann::json& p_configurations);
+  void configure_mqtt_client(
+      const BrokerConfiguration_t& p_brokerConfiguration);
 
   RouteConfigurations_t retrieve_routes(const nlohmann::json& p_routes);
 
