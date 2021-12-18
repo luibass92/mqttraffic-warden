@@ -1,0 +1,3 @@
+#define MQTTrafficWarden_VERSION_MAJOR  @MQTTrafficWarden_VERSION_MAJOR@
+#define MQTTrafficWarden_VERSION_MINOR  @MQTTrafficWarden_VERSION_MINOR@
+#define MQTTrafficWarden_VERSION_PATCH  @MQTTrafficWarden_VERSION_PATCH@

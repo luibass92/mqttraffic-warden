@@ -1,0 +1,86 @@
+{
+	"brokerAddress": "10.0.2.2",
+	"brokerUser": "guest",
+	"brokerPassword": "guest",
+	"clientId": "",
+	"keepAliveInterval": 60,
+	"ssl": false,
+	"trustStore": "",
+	"keyStore": "",
+	"privateKey": "",
+	"routes": [
+		{
+			"name": "Route 1",
+			"inputTopic": "food/fat/pizza",
+			"outputTopic": "food/good",
+			"streamTransformers": [
+				{
+					"type": "topicToPayload",
+					"from": 2,
+					"to": "likedFood",
+					"as": "string"
+				},
+				{
+					"type": "payloadToPayload",
+					"from": "fruit",
+					"to": "without",
+					"as": "string",
+					"keep": true
+				},
+				{
+					"type": "payloadToTopic",
+					"from": "seasoning",
+					"to": 2,
+					"keep": true
+				},
+				{
+					"type": "payloadToTopic",
+					"from": "quantity",
+					"to": 2,
+					"keep": false
+				},
+				{
+					"type": "topicToTopic",
+					"from": 2,
+					"to": 2
+				}
+			]
+		},
+		{
+			"name": "Route 2",
+			"inputTopic": "food/fat/pizza",
+			"outputTopic": "food/good/lovely/pizza"
+		},
+		{
+			"name": "Route 3",
+			"inputTopic": "food/bad/vegetables",
+			"outputTopic": "food",
+			"streamTransformers": [
+				{
+					"type": "topicToTopic",
+					"from": 1,
+					"to": 1
+				},
+				{
+					"type": "payloadToTopic",
+					"from": "putMeIn",
+					"to" : 2,
+					"keep": false
+				}
+			]
+		},
+		{
+			"name": "Route 4",
+			"inputTopic": "food/1",
+			"outputTopic": "food",
+			"streamTransformers": [
+				{
+					"type": "topicToPayload",
+					"from": 1,
+					"to": "quantity",
+					"as": "number"
+				}
+			]
+		}
+	]
+}
